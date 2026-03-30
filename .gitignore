@@ -1,0 +1,5 @@
+﻿*.bin
+*.dmp
+*.tmp
+*.log
+__pycache__/
