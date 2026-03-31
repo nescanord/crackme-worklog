@@ -229,6 +229,24 @@ Interpretation:
 - but it sits at the end of a trap path, not at a clean bypass point
 - any stable bypass needs to divert before that terminal exit is prepared
 
+## Pre-Exit Branch Finding
+
+The obvious branch immediately before the terminal call:
+
+- `crackme+0x5a3627f`
+
+does materialize in runtime with the expected original bytes:
+
+- `0f 85 d0 f6 ea ff ...`
+
+That rules out the easy explanation that this region is simply absent or rewritten away before execution.
+
+Current interpretation:
+
+- the pre-exit branch exists and is live
+- but patching it alone does not dislodge the process from the same terminal caller
+- so it is not, by itself, the final select bit for acceptance vs trap
+
 ## Termination Suppression Finding
 
 When these are neutralized together:
