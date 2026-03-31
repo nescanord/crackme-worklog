@@ -1,0 +1,225 @@
+{
+  "results": [
+    {
+      "input": "test",
+      "pid": 7284,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        }
+      ],
+      "modules": [
+        "crackme.exe",
+        "ntdll.dll",
+        "KERNEL32.DLL",
+        "KERNELBASE.dll",
+        "USER32.dll",
+        "win32u.dll",
+        "GDI32.dll",
+        "gdi32full.dll",
+        "msvcp_win.dll",
+        "ucrtbase.dll",
+        "MSVCP140.dll",
+        "bcrypt.dll",
+        "WINMM.dll",
+        "sechost.dll",
+        "VCRUNTIME140.dll",
+        "VCRUNTIME140_1.dll",
+        "IMM32.DLL"
+      ],
+      "samples": [
+        {
+          "t": 0.0,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 0.2,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 0.4,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 0.6,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 0.81,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 1.01,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 1.21,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 1.41,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 1.61,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 1.81,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 2.01,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 2.21,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 2.42,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 2.62,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        },
+        {
+          "t": 2.82,
+          "exit_code": "0x103",
+          "windows": [
+            {
+              "hwnd": "0x16809b4",
+              "visible": true,
+              "class": "ConsoleWindowClass",
+              "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

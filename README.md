@@ -122,6 +122,17 @@ When `NtRaiseHardError`, `NtTerminateProcess`, and `RtlExitUserProcess` are all 
 
 That is the best classified non-reject, non-popup live state found so far.
 
+The latest profiling pass compressed the trap problem further. Both the `0xDEADC0DE` route and the `0x80000003` route now converge inside the prompt/decoder family around:
+
+- `0x55d904a`
+- `0x55d9057`
+- `0x55d90ee`
+- `0x55d9107`
+- `0x55d912e`
+- `0x55d913c`
+
+This is currently the highest-signal local choke window in the whole crackme.
+
 ## Repository Layout
 
 - `scripts/`: tracers, popup probes, selector sweep helpers, API guard probes
@@ -137,4 +148,5 @@ The problem is no longer broad exploration. The remaining work is concentrated a
 
 - coherent `R10`-side state production
 - avoiding the `0xDEADC0DE` trap rather than merely silencing its UI
-- and following the live `crackme | reezli.vc` state toward a stable bypass
+- following the live `crackme | reezli.vc` state toward a stable bypass
+- and splitting the two trap outcomes inside the narrowed `0x55d90xx` block

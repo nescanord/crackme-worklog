@@ -173,6 +173,28 @@ and an early trap-producing selector route is forced, the process:
 
 This is not yet a confirmed bypass, but it is the best classified non-reject, non-popup live state discovered so far.
 
+## Latest Trap Compression
+
+Recent all-thread tracing and RVA profiling compressed the trap analysis further.
+
+For the `0xDEADC0DE` trap family, useful hits and hot RVAs concentrate around:
+
+- `0x55d904a`
+- `0x55d9057`
+- `0x55d913c`
+
+For the `0x80000003` trap family, useful hits and hot RVAs concentrate around:
+
+- `0x55d90ee`
+- `0x55d9107`
+- `0x55d912e`
+
+Interpretation:
+
+- both trap outcomes belong to the same local prompt/decoder family
+- the important divergence is now inside the narrowed `0x55d90xx` window
+- this is currently a better choke region than the broader VM network above it
+
 ## Downgraded Or Discarded Leads
 
 - `.pwdprot` as the active password source

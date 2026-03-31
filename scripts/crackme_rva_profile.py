@@ -3,6 +3,7 @@ import ctypes
 import json
 import os
 import time
+from collections import Counter
 from ctypes import wintypes
 
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -10,6 +11,8 @@ kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
 kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 kernel32.GetProcAddress.argtypes = [wintypes.HMODULE, ctypes.c_char_p]
 kernel32.GetProcAddress.restype = ctypes.c_void_p
+kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
 
 CREATE_NEW_CONSOLE = 0x00000010
 CREATE_UNICODE_ENVIRONMENT = 0x00000400
@@ -25,14 +28,13 @@ OPEN_EXISTING = 3
 CONTEXT_AMD64 = 0x00100000
 CONTEXT_CONTROL = CONTEXT_AMD64 | 0x1
 CONTEXT_INTEGER = CONTEXT_AMD64 | 0x2
-CONTEXT_FLOATING_POINT = CONTEXT_AMD64 | 0x8
-CONTEXT_FULL = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT
-WAIT_TIMEOUT = 0x102
+CONTEXT_FULL = CONTEXT_CONTROL | CONTEXT_INTEGER
 THREAD_SUSPEND_RESUME = 0x0002
 THREAD_GET_CONTEXT = 0x0008
 THREAD_QUERY_INFORMATION = 0x0040
-VK_RETURN = 0x0D
 PAGE_EXECUTE_READWRITE = 0x40
+WAIT_TIMEOUT = 0x102
+VK_RETURN = 0x0D
 
 
 class STARTUPINFOW(ctypes.Structure):
@@ -48,6 +50,38 @@ class STARTUPINFOW(ctypes.Structure):
 
 class PROCESS_INFORMATION(ctypes.Structure):
     _fields_ = [("hProcess", wintypes.HANDLE), ("hThread", wintypes.HANDLE), ("dwProcessId", wintypes.DWORD), ("dwThreadId", wintypes.DWORD)]
+
+
+class MODULEENTRY32W(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", wintypes.DWORD), ("th32ModuleID", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
+        ("GlblcntUsage", wintypes.DWORD), ("ProccntUsage", wintypes.DWORD), ("modBaseAddr", ctypes.POINTER(ctypes.c_byte)),
+        ("modBaseSize", wintypes.DWORD), ("hModule", wintypes.HMODULE), ("szModule", wintypes.WCHAR * 256),
+        ("szExePath", wintypes.WCHAR * wintypes.MAX_PATH)
+    ]
+
+
+class THREADENTRY32(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ThreadID", wintypes.DWORD),
+        ("th32OwnerProcessID", wintypes.DWORD), ("tpBasePri", wintypes.LONG), ("tpDeltaPri", wintypes.LONG), ("dwFlags", wintypes.DWORD)
+    ]
+
+
+class KEY_EVENT_RECORD(ctypes.Structure):
+    _fields_ = [
+        ("bKeyDown", wintypes.BOOL), ("wRepeatCount", wintypes.WORD), ("wVirtualKeyCode", wintypes.WORD),
+        ("wVirtualScanCode", wintypes.WORD), ("UnicodeChar", wintypes.WCHAR), ("dwControlKeyState", wintypes.DWORD)
+    ]
+
+
+class INPUT_UNION(ctypes.Union):
+    _fields_ = [("KeyEvent", KEY_EVENT_RECORD)]
+
+
+class INPUT_RECORD(ctypes.Structure):
+    _anonymous_ = ("Event",)
+    _fields_ = [("EventType", wintypes.WORD), ("Event", INPUT_UNION)]
 
 
 class M128A(ctypes.Structure):
@@ -84,38 +118,6 @@ class CONTEXT(ctypes.Structure):
         ("VectorControl", ctypes.c_uint64), ("DebugControl", ctypes.c_uint64), ("LastBranchToRip", ctypes.c_uint64),
         ("LastBranchFromRip", ctypes.c_uint64), ("LastExceptionToRip", ctypes.c_uint64), ("LastExceptionFromRip", ctypes.c_uint64)
     ]
-
-
-class MODULEENTRY32W(ctypes.Structure):
-    _fields_ = [
-        ("dwSize", wintypes.DWORD), ("th32ModuleID", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
-        ("GlblcntUsage", wintypes.DWORD), ("ProccntUsage", wintypes.DWORD), ("modBaseAddr", ctypes.POINTER(ctypes.c_byte)),
-        ("modBaseSize", wintypes.DWORD), ("hModule", wintypes.HMODULE), ("szModule", wintypes.WCHAR * 256),
-        ("szExePath", wintypes.WCHAR * wintypes.MAX_PATH)
-    ]
-
-
-class THREADENTRY32(ctypes.Structure):
-    _fields_ = [
-        ("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ThreadID", wintypes.DWORD),
-        ("th32OwnerProcessID", wintypes.DWORD), ("tpBasePri", wintypes.LONG), ("tpDeltaPri", wintypes.LONG), ("dwFlags", wintypes.DWORD)
-    ]
-
-
-class KEY_EVENT_RECORD(ctypes.Structure):
-    _fields_ = [
-        ("bKeyDown", wintypes.BOOL), ("wRepeatCount", wintypes.WORD), ("wVirtualKeyCode", wintypes.WORD),
-        ("wVirtualScanCode", wintypes.WORD), ("UnicodeChar", wintypes.WCHAR), ("dwControlKeyState", wintypes.DWORD)
-    ]
-
-
-class INPUT_UNION(ctypes.Union):
-    _fields_ = [("KeyEvent", KEY_EVENT_RECORD)]
-
-
-class INPUT_RECORD(ctypes.Structure):
-    _anonymous_ = ("Event",)
-    _fields_ = [("EventType", wintypes.WORD), ("Event", INPUT_UNION)]
 
 
 def create_process(path):
@@ -253,12 +255,13 @@ def parse_patch(spec):
 
 
 def ctx_record(ctx):
-    names = ("Rip", "Rax", "Rbx", "Rcx", "Rdx", "Rsi", "Rdi", "R8", "R9", "R10", "R11", "EFlags")
+    names = ("Rip", "Rax", "Rbx", "Rcx", "Rdx", "Rsi", "Rdi", "R8", "R9", "R10", "EFlags")
     return {name.lower(): hex(int(getattr(ctx, name))) for name in names}
 
 
 def run_once(args, user_input):
     pi = create_process(args.exe)
+    hcon = None
     try:
         time.sleep(args.start_delay)
         base, size = module_base(pi.dwProcessId, os.path.basename(args.exe))
@@ -284,9 +287,8 @@ def run_once(args, user_input):
         try:
             time.sleep(args.input_delay)
             send_text(hcon, user_input)
-            targets = set(args.targets)
-            counts = {}
-            hits = []
+            samples = Counter()
+            sample_reprs = {}
             end = time.time() + args.timeout
             while time.time() < end:
                 if kernel32.WaitForSingleObject(pi.hProcess, 0) != WAIT_TIMEOUT:
@@ -304,13 +306,11 @@ def run_once(args, user_input):
                             if not kernel32.GetThreadContext(hthread, ctypes.byref(ctx)):
                                 continue
                             rva = int(ctx.Rip) - base
-                            if rva in targets:
+                            if 0 <= rva < size:
                                 key = (tid, rva)
-                                counts[key] = counts.get(key, 0) + 1
-                                if counts[key] <= args.max_hits:
-                                    rec = {"input": user_input, "tid": tid, "rva": hex(rva), "hit": counts[key]}
-                                    rec.update(ctx_record(ctx))
-                                    hits.append(rec)
+                                samples[key] += 1
+                                if key not in sample_reprs:
+                                    sample_reprs[key] = ctx_record(ctx)
                         finally:
                             kernel32.ResumeThread(hthread)
                     finally:
@@ -319,14 +319,22 @@ def run_once(args, user_input):
                     time.sleep(args.interval)
             exit_code = wintypes.DWORD(0)
             kernel32.GetExitCodeProcess(pi.hProcess, ctypes.byref(exit_code))
+            top = samples.most_common(args.top)
             return {
                 "input": user_input,
                 "pid": pi.dwProcessId,
                 "base": hex(base),
                 "size": hex(size),
                 "patches": [{"rva": hex(rva), "bytes": raw.hex()} for rva, raw in args.patches],
-                "counts": {f"tid:{tid}:{hex(rva)}": v for (tid, rva), v in sorted(counts.items())},
-                "hits": hits,
+                "top": [
+                    {
+                        "tid": tid,
+                        "rva": hex(rva),
+                        "count": count,
+                        **sample_reprs[(tid, rva)],
+                    }
+                    for (tid, rva), count in top
+                ],
                 "exit_code": hex(exit_code.value),
             }
         finally:
@@ -339,25 +347,22 @@ def run_once(args, user_input):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Trace target RVAs across all threads in the crackme process.")
+    ap = argparse.ArgumentParser(description="Profile hot RVAs across all threads before the crackme exits.")
     ap.add_argument("--exe", required=True)
     ap.add_argument("--inputs", nargs="+", required=True)
-    ap.add_argument("--targets", nargs="+", required=True, type=lambda x: int(x, 16))
     ap.add_argument("--patch", action="append", default=[])
     ap.add_argument("--patch-api", action="store_true")
     ap.add_argument("--patch-terminate", action="store_true")
     ap.add_argument("--patch-exit-user", action="store_true")
-    ap.add_argument("--timeout", type=float, default=8.0)
-    ap.add_argument("--interval", type=float, default=0.002)
-    ap.add_argument("--max-hits", type=int, default=4)
+    ap.add_argument("--timeout", type=float, default=4.0)
+    ap.add_argument("--interval", type=float, default=0.001)
+    ap.add_argument("--top", type=int, default=25)
     ap.add_argument("--start-delay", type=float, default=0.8)
     ap.add_argument("--input-delay", type=float, default=0.4)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     args.patches = [parse_patch(spec) for spec in args.patch]
-
-    results = [run_once(args, user_input) for user_input in args.inputs]
-    payload = {"targets": [hex(t) for t in args.targets], "results": results}
+    payload = {"results": [run_once(args, item) for item in args.inputs]}
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
     print(json.dumps(payload, indent=2))

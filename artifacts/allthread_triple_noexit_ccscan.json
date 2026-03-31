@@ -1,0 +1,60 @@
+{
+  "targets": [
+    "0x55d90ee",
+    "0x55d9103",
+    "0x55d9118",
+    "0x55d93a9",
+    "0x55d982a",
+    "0x55d9bc9",
+    "0x55d9ca9",
+    "0x55d9cde",
+    "0x55d9d6f",
+    "0x55d9ed3"
+  ],
+  "results": [
+    {
+      "input": "test",
+      "pid": 41032,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        }
+      ],
+      "counts": {
+        "tid:41204:0x55d90ee": 1
+      },
+      "hits": [
+        {
+          "input": "test",
+          "tid": 41204,
+          "rva": "0x55d90ee",
+          "hit": 1,
+          "rip": "0x7ff7508a90ee",
+          "rax": "0x12c8f5fb",
+          "rbx": "0x2ab62d0ee8c",
+          "rcx": "0x5ad",
+          "rdx": "0x7a",
+          "rsi": "0x3",
+          "rdi": "0x12e42fb3",
+          "r8": "0x1a7a3c07",
+          "r9": "0x7ff74efbd6e2",
+          "r10": "0x7a",
+          "r11": "0x80",
+          "eflags": "0x216"
+        }
+      ],
+      "exit_code": "0x80000003"
+    }
+  ]
+}

@@ -208,18 +208,27 @@ def ctx_record(ctx):
     return {name.lower(): hex(int(getattr(ctx, name))) for name in names}
 
 
+def apply_patches(hproc, base, patches, wait_timeout):
+    for rva, raw in patches:
+        wait_for_materialization(hproc, base + rva, len(raw), wait_timeout)
+        patch_memory(hproc, base + rva, raw)
+
+
 def run_once(args, user_input, patches):
     pi = create_process(args.exe)
     try:
         time.sleep(args.start_delay)
         base, size = module_base(pi.dwProcessId, os.path.basename(args.exe))
-        for rva, raw in patches:
-            wait_for_materialization(pi.hProcess, base + rva, len(raw), max(0.5, args.start_delay + args.input_delay + 1.5))
-            patch_memory(pi.hProcess, base + rva, raw)
         hcon = open_console_input(pi.dwProcessId)
         try:
+            if not args.patch_after_input:
+                apply_patches(pi.hProcess, base, patches, max(0.5, args.start_delay + args.input_delay + 1.5))
             time.sleep(args.input_delay)
             send_text(hcon, user_input)
+            if args.patch_after_input:
+                if args.patch_delay:
+                    time.sleep(args.patch_delay)
+                apply_patches(pi.hProcess, base, patches, max(0.5, args.timeout / 2.0))
             targets = set(args.targets)
             counts = {}
             hits = []
@@ -278,6 +287,8 @@ def main():
     ap.add_argument('--start-delay', type=float, default=0.8)
     ap.add_argument('--input-delay', type=float, default=0.4)
     ap.add_argument('--out')
+    ap.add_argument('--patch-after-input', action='store_true')
+    ap.add_argument('--patch-delay', type=float, default=0.0)
     args = ap.parse_args()
 
     patches = [parse_patch(spec) for spec in args.patch]

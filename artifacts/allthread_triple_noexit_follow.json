@@ -1,0 +1,37 @@
+{
+  "targets": [
+    "0x55d90ee",
+    "0x55d9103",
+    "0x55d9134",
+    "0x55d9172",
+    "0x55da00a",
+    "0x55d8d5f",
+    "0x55d9f55",
+    "0x55d9fca"
+  ],
+  "results": [
+    {
+      "input": "test",
+      "pid": 41704,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        }
+      ],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x80000003"
+    }
+  ]
+}
