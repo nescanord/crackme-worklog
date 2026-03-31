@@ -1,84 +1,148 @@
-NecrumWin (Reezli challenge) - summary snapshot
-==============================================
+NecrumWin (Reezli challenge) - resumen operativo sincronizado
+============================================================
 
-Current state:
+Este resumen corto se deriva de la memoria canonica y del repo.
 
-- target sample is verified correct by hash
-- visible anti-debug basics are neutralized in-process:
-  - `CheckRemoteDebuggerPresent`
-  - `IsDebuggerPresent`
-  - `FindWindowW`
-- this does not unlock the crackme by itself
+Estado actual
+-------------
+- la fuente de verdad es el repo `crackme-worklog`, no las memorias manuales aisladas
+- la linea mas nueva ya no es solo `R10 -> R8 -> ESI`; ahora incluye la rama `family14` y la trampa `xabort`
+- choke points actuales mas utiles:
+  - `0x55d9f14`
+  - `0x55da8b5`
+  - `0x1203bb4`
+  - `0x1e0ae4c`
 
-Confirmed runtime chains:
+Hallazgo mas reciente
+---------------------
+- la ruta mas avanzada y repetible termina en `crackme+0x1e0ae4c = xabort 0xDC`
+- la pila estable observada es:
+  - `crackme+0x1e0ae4c`
+  - `crackme+0x1203bb4`
+  - `crackme+0x55da8b5`
+- parchear `0x55da8b5`, `0x55da8b0` o `0x55da8d9` no evita ese sink
 
-Prompt:
-- `0x55d9c83`
-- `0x55d9c1c`
-- `0x5c68c01`
-- `0x5d24729`
-- `0x5d2473f`
+Implicacion
+-----------
+- el selector real esta por encima de `0x55da8b5`
+- el bypass sigue pareciendo mas cercano que la password exacta
 
-Validation:
-- `0x2cf67df`
-- `0x236fe1a`
-- `0x23e05cd`
+Commits recientes
+-----------------
+85280e7 Record family14 xabort trap follow-up
+97c1398 Record pre-exit branch results
+7e6bd59 Add dump-driven exit trap analysis
+a2447db Add trap probes and latest 55d90xx analysis
+7c86341 Rewrite full NecrumWin context and current trap analysis
+332adf1 Add scripts and update R10 selector analysis
+e0230e0 Rewrite NecrumWin worklog as full reverse-engineering report
+81650ed Update NecrumWin late-stage target analysis
 
-Late convergence:
-- `0x27dd114`
-- `0x2802257`
+Siguiente paso
+--------------
+# Next Steps
 
-Current late-state model:
+## Immediate Priority
 
-- selector chain: `R10 -> R8 -> ESI`
-- recovered selector block:
-  - `test r10w, 0x71ab`
-  - `sete r8b`
-  - `add r8d, r8d`
-  - `call 0x1468d67b5`
-- late gate:
-  - `0x1468d67f8: neg esi`
-  - `0x1468d67fa: jne 0x1461ec902`
+The main line is no longer the old `DEADC0DE` exit path.
 
-Protection classification:
+The current highest-value path is:
 
-- `Initialization error 2`
-  - caused by patching too early
-  - currently treated as a bad initialization branch
+- family-wide patch over the repeated local loop family
+- new AV at `crackme+0x55d9f14`
+- and, once the loop is cut differently, an explicit trap at:
+  - `crackme+0x1e0ae4c = xabort 0xDC`
 
-- `bruh`
-  - modal `#32770` system dialog
-  - title `crackme.exe`
-  - child `Static = "bruh"`
-  - not success, but a trap UI
+That means the active choke point has moved from the old hard-error exit into a later anti-tamper chain.
 
-- `0xDEADC0DE`
-  - underlying result of the trap route once `NtRaiseHardError` is neutralized
+## Confirmed Current Choke Points
 
-Most useful recent finding:
+- `0x55d9f14`
+- `0x55d9f27`
+- `0x55d9f40`
+- `0x55d9f4f`
+- `0x55da8b5`
+- `0x1203bb4`
+- `0x1e0ae4c`
 
-When these are neutralized:
+Observed stack on the `C000001D` path:
 
-- `NtRaiseHardError`
-- `NtTerminateProcess`
-- `RtlExitUserProcess`
+- `crackme+0x1e0ae4c`
+- `crackme+0x1203bb4`
+- `crackme+0x55da8b5`
 
-and an early trap-producing selector route is forced, the process:
+## Recommended Work Order
 
-- stays alive
-- avoids the popup
-- changes its console title to `crackme | reezli.vc`
+1. Stop spending time on `kernel32/ntdll` exits for the main line.
+2. Treat `0x1e0ae4c` as a trap sink and focus on the dispatch that reaches it.
+3. Use the repeated loop family patch as the reproducible base configuration.
+4. Walk upward from `0x55da8b5` and identify the selector that dispatches into `0x1203bb4 -> 0x1e0ae4c`.
+5. If needed, use delayed patching only for late-materialized pages, but keep the family loop patch early.
 
-This is not yet a stable bypass, but it is the cleanest classified non-reject, non-popup live state found so far.
+## Concrete Technical Targets
 
-Current estimate:
+### 1. Repeated local loop family
 
-- stable bypass: `79%`
-- exact password: `40%`
-- overall progress: `85%`
+Keep the 14-loop family patch as the baseline because it consistently removes the old reject/trap family and exposes the later anti-tamper path.
 
-Next focus:
+Key loop RVAs:
 
-- avoid the `0xDEADC0DE` trap instead of only silencing its UI
-- follow the live `crackme | reezli.vc` state
-- move one step upward from the trap into coherent `R10`-side state production
+- `0x55d8d9d`
+- `0x55d8f1a`
+- `0x55d8fe7`
+- `0x55d91c3`
+- `0x55d9324`
+- `0x55d9537`
+- `0x55d9607`
+- `0x55d9789`
+- `0x55d989d`
+- `0x55d9a09`
+- `0x55d9b7b`
+- `0x55d9d14`
+- `0x55d9dbf`
+- `0x55d9f55`
+
+### 2. Reader/writer microblock
+
+The `C0000005` path is still useful because it exposes the reader/writer block:
+
+- `0x55d9f14`
+- `0x55d9f27`
+- `0x55d9f40`
+- `0x55d9f4f`
+
+This is the last coherent local state machine before the anti-tamper branch.
+
+### 3. Late anti-tamper dispatch
+
+The `C000001D` path shows a stable trap sink:
+
+- `0x55da8b5`
+- `0x1203bb4`
+- `0x1e0ae4c`
+
+Important finding:
+
+- direct patching of `0x55da8b0`
+- direct patching of `0x55da8d9`
+- and direct short-circuiting of `0x55da8b5`
+
+all still land in the same `xabort` sink.
+
+That strongly suggests the real selector is above `0x55da8b5`, not inside it.
+
+### 4. Password route remains secondary
+
+Password recovery remains secondary until a stable non-trap route exists.
+
+## Short-Term Success Criteria
+
+The next pass should achieve at least one of these:
+
+- identify the caller or dispatch above `0x55da8b5` that selects `0x1203bb4`
+- land in a post-`family14` path that avoids both `C0000005` and `C000001D`
+- or capture the late-materialized page that backs `0x1e0ae4c` before the trap fires
+
+Referencia
+----------
+Para detalle completo, ver `notes/memoria_canonica.txt` en el repo.

@@ -1,0 +1,487 @@
+PROYECTO: Crackme Reezli / NecrumWin
+Memorias heredadas y potencialmente desactualizadas
+===================================================
+
+Importante
+----------
+Este archivo conserva memorias previas de Claude y ChatGPT que pueden contener:
+- estimaciones antiguas
+- rutas ya superadas
+- conclusiones parciales
+- datos no alineados con el estado actual
+
+No debe tratarse como fuente canónica única.
+La fuente canónica debe reconstruirse cruzando:
+- `git log`
+- `timeline.md`
+- `findings.md`
+- `next-steps.md`
+- artefactos recientes
+
+--------------------------------------------------
+MEMORIA DESACTUALIZADA DE CLAUDE
+--------------------------------------------------
+
+PROYECTO: Crackme Reezli / NecrumWin  Historial completo
+Origen
+El reto viene de un Discord de seguridad/reversing llamado NCRM. Un usuario llamado Reezli publicó un crackme nativo de Windows (C++17, x64) en el canal #crack-me. El archivo es crackme.rar con password 123, pesa 46.78 MB. Reezli ofreció 20$ al primero que logre el main goal (recuperar la password). También dijo que todo es client-side, sin servidor, y que la verificación usa derivación criptográfica. Dificultad declarada: 6/10. Hasta el momento de las capturas, nadie lo había resuelto.
+Hashes del binario
+
+MD5: 78d8e7061e2db2a51387b501ebbc5586
+SHA-1: e82e9d93d3bc73c1def281e8f13b3f276d0f5767
+SHA-256: 948089902fbafe0f2333f8a85ac46f81b46375bdcceb141ded697d5b8280cce8
+VirusTotal verificado
+
+Fase 1  Setup del entorno (30 marzo 2026)
+Montamos todo el entorno de análisis desde cero en tu Windows:
+
+Instalaste Java 26 (Oracle JDK) y luego JDK 25 de Adoptium
+Ghidra 12.0.4 PUBLIC ya estaba descargado en el escritorio
+Clonaste LaurieWired/GhidraMCP en ~\Documents\GhidraMCP
+El pip install . falló porque el repo no tiene setup.py  es un proyecto Maven + un bridge Python
+Descargaste Apache Maven 3.9.14 desde la web oficial, lo descomprimiste en C:\apache-maven-3.9.14
+El mvn package falló inicialmente porque faltaban los JARs de Ghidra en la carpeta lib/
+Copiaste manualmente los 8 JARs necesarios (Generic, SoftwareModeling, Project, Docking, Decompiler, Utility, Base, Gui) desde la instalación de Ghidra
+mvn package  BUILD SUCCESS  generó GhidraMCP-1.0-SNAPSHOT.zip
+El release precompilado del GitHub (GhidraMCP-release-1-4.zip) no era compatible con Ghidra 12.0.4
+Instalaste el .zip compilado con "Install Anyway" (version mismatch 11.3.2 vs 12.0.4, pero funcionó)
+Importaste crackme.exe en Ghidra, se analizó correctamente como PE x86-64
+El plugin GhidraMCP levantó el servidor HTTP en puerto 8080  verificado con Invoke-WebRequest contra /methods (status 200)
+Instalaste las dependencias Python del bridge con pip install -r requirements.txt
+El bridge bridge_mcp_ghidra.py arrancó correctamente en modo stdio
+
+Fase 2  Conexión con Claude Code
+
+Creaste la carpeta %APPDATA%\Claude y el archivo claude_desktop_config.json con la config del MCP de Ghidra
+Decidiste usar Claude Code en terminal en vez de Claude Desktop
+Ejecutaste claude mcp add ghidra python bridge_mcp_ghidra.py desde ~\Documents\GhidraMCP
+Claude Code (Sonnet 4.6, v2.1.87) se conectó correctamente al MCP
+
+Fase 3  Análisis inicial con Claude Code + Ghidra MCP
+Claude Code hizo un análisis automático paralelo y descubrió:
+
+Imports clave: BCryptCloseAlgorithmProvider, CheckRemoteDebuggerPresent, FindWindowW, strcmp, PlaySoundW, atoi, malloc
+Anti-debugging: CheckRemoteDebuggerPresent + FindWindowW (busca ventanas de debuggers)
+No hay función "main" con nombre  el entry point está en 0x1444ead26
+Strings relevantes: bcrypt.dll, BCryptCloseAlgorithmProvider, manifest XML que pide requireAdministrator
+Secciones del binario  hallazgo crítico:
+
+Secciones fake de protectores: .enigma1, .enigma2, .vmp0, .vmp1, .vmp2, UPX0, .winlice, .petite, .rlp, .dsstext, logicoma, adr, have, 30cm, PETETRIS, .obfh_en, .alien, .pwdprot, .arch, .obfh_nu, .tw, .vlizer, .obfh_sc, .aspack, .adata, __wibu00, __wibu01
+Secciones reales con código: .+__'^0 (0x1411ec0000x142d4c1bc), .+__'^2 (0x142d4e0000x145ff75ff)
+El entry point está dentro de .+__'^2
+
+IAT ofuscada: no hay cross-references estáticas a las APIs  se resuelven dinámicamente en runtime
+Todas las funciones en 0x1400xxxxx dan "WARNING: Control flow encountered bad instruction data"  código probablemente empaquetado o cifrado
+Muchas funciones grandes causan timeout (5s) al decompilar  típico de código virtualizado
+
+Fase 4  Análisis profundo (trabajo continuado con Claude Code)
+Basándome en el resumen y el repo de GitHub, el análisis continuó extensivamente:
+
+Descartaste la superficie obvia: .pwdprot, strcmp, memcmp, strncmp, wcscmp, rutas CRT/CNG
+Descartaste FUN_1455da550 como comparador decisivo
+Pivote estratégico clave: abandonaste el debugger clásico y creaste crackme_capture.py  un script custom que:
+
+Lanza el proceso con CreateProcessW + CREATE_NEW_CONSOLE
+Se conecta con AttachConsole + CONIN$ para inyectar input
+Usa GetThreadContext + ReadProcessMemory para samplear estado
+No usa debugger visible, esquivando todas las detecciones anti-debug
+
+Parcheaste en runtime: CheckRemoteDebuggerPresent, IsDebuggerPresent, FindWindowW
+Usaste Capstone para desensamblar dumps de memoria (mod_after.bin)
+
+Hallazgos de rutas dinámicas confirmadas:
+Prompt-side: 0x55d9c83  0x55d9c1c  0x5c68c01  0x5d24729  0x5d2473f
+Post-validación: 0x2cf67df  0x236fe1a  0x23e05cd
+Convergencia tardía: 0x27dd114  0x2802257
+Modelo del selector tardío:
+
+R10 es upstream state
+test r10w, 0x71ab  sete r8b  add r8d, r8d  call 0x1468d67b5
+0x1468d67f8: neg esi  jne 0x1461ec902
+ESI se usa como estado derivado dentro de handlers VM-like
+
+Dos familias de salida de la VM:
+
+Familia A: RAX=0x28, RBX=0 (rechazo)
+Familia B: RAX=0x2a, RBX=1 (aceptación probable)
+
+Traps descubiertos:
+
+Popup "bruh"  dialog modal #32770, hijo Static = "bruh"
+Al neutralizar NtRaiseHardError  exit code 0xDEADC0DE
+Al neutralizar también NtTerminateProcess + RtlExitUserProcess  proceso vivo con título crackme | reezli.vc (mejor estado non-reject encontrado)
+"Initialization error 2"  branch de mala inicialización por parchear demasiado temprano
+
+Branches tardíos descartados como terminales:
+
+0x1477dd120 (jle)  forzarlo no evita convergencia
+0x14785312b (jne)  tampoco rompe la ruta de rechazo
+
+Bloque choke de mayor señal: 0x55d904a  0x55d9057  0x55d90ee  0x55d9107  0x55d912e  0x55d913c
+Estado del progreso (según repo GitHub, más reciente):
+
+Global: 85%
+Bypass estable: 79%
+Password exacta: 40%
+
+Estado del progreso (según resumen .txt, anterior):
+
+Global: 97%
+Bypass: 99%
+Password exacta: 85%
+
+Repo GitHub:
+
+URL: https://github.com/nescanord/crackme-worklog
+9 commits, branch master
+Estructura: scripts/, artifacts/, notes/, findings.md, timeline.md, next-steps.md
+100% Python
+Último commit mencionado: 083fba1  "Update late-stage branch analysis"
+
+Siguiente paso identificado:
+
+Seguir 0x1475e525a y probar 0x1475e525f (jne 0x1475ba298) como split tardío
+Producir estado coherente desde R10-side
+Evitar la ruta 0xDEADC0DE por la vía correcta en vez de silenciarla
+Explotar el estado crackme | reezli.vc hacia bypass estable
+
+--------------------------------------------------
+MEMORIA DESACTUALIZADA DE CHATGPT
+--------------------------------------------------
+
+Te hago un resumen completo y ordenado de todo el contexto del proyecto del crackme según lo que hemos ido hablando en esta conversación. Lo estructuro como si fuera un worklog técnico limpio, para que puedas usarlo incluso con Codex / otro agente.
+
+Contexto completo del proyecto (crackme reversing)
+Objetivo del proyecto
+
+Resolver un crackme con dos posibles metas:
+
+Obtener la password real
+O conseguir un bypass estable
+
+Actualmente la estrategia priorizada es:
+
+sacar primero un bypass estable desde la lógica tardía del binario.
+
+Estado actual del reversing
+Zona crítica identificada
+
+Se ha localizado una bisagra tardía real que afecta al resultado visible del programa.
+
+Direcciones clave encontradas:
+
+0x1468d67f8
+0x1468d67fa
+0x1461ec902
+
+La lógica relevante incluye:
+
+neg esi
+jne 0x1461ec902
+
+Este punto parece actuar como selector de estado final.
+
+Comportamientos observados en ejecución
+
+El crackme tiene tres salidas principales detectadas:
+
+Reject normal
+Trap (0xdeadc0de)
+Rama alternativa / reentrada (bruh / prompt loop)
+
+Cuando se modifica el flujo en esta zona:
+
+desaparece el reject loop
+aparecen rutas nuevas
+el comportamiento del binario cambia claramente
+
+Esto confirma que es un gate real y no ruido.
+
+Parches probados
+
+Patch candidato más fuerte que encontraste:
+
+0x5b9494  -> e9 7e f6 fe ff
+0x34f63   -> e9 04 53 1c 01 90
+0x18d67fa -> 90 90 90 90 90
+
+Interpretación:
+
+salto forzado temprano
+jno forzado
+eliminación de branch tardío
+
+Resultado:
+
+mejora el comportamiento
+elimina parte del reject loop
+pero no es bypass definitivo aún.
+Inputs usados para test
+
+Has probado varias entradas para observar comportamiento:
+
+test
+auth_login_success
+aaaa
+aaab
+
+Observación importante:
+
+Algunos inputs cambian el flujo de forma distinta, lo que sugiere que el programa usa:
+
+estado interno
+o múltiples validadores.
+Descubrimiento clave del reversing
+
+El punto de decisión real ya no está en:
+
+cmp ebx, 1
+
+Ni en otros gates anteriores.
+
+Ahora el choke point real está entre:
+
+0x1468d67fa
+
+0x1461ec902
+
+Esto reduce muchísimo el espacio de análisis.
+
+Análisis del estado interno del crackme
+
+Hay indicios de que el programa usa un valor de estado pequeño (probablemente generado en R8 y luego movido a ESI):
+
+Posible estructura:
+
+validator
+ 
+R8 = state
+ 
+ESI = normalized state
+ 
+branch selector
+
+Ese estado podría ser algo como:
+
+0 = success
+1 = reject
+2 = trap
+3 = anti-tamper / reentry
+
+Esto explicaría por qué:
+
+algunos parches funcionan parcialmente
+pero no estabilizan el bypass.
+Intento de instrumentación
+Herramienta usada
+
+Frida.
+
+Script creado:
+
+crackme_frida_gate_probe.py
+
+Se instalaron:
+
+frida
+frida-tools
+pefile
+
+Resultado:
+
+records = []
+
+Ningún hook se ejecutó.
+
+Conclusión:
+
+El crackme detecta instrumentación.
+
+Probablemente tiene:
+
+anti-Frida
+anti-debug
+o detección temprana de hooks.
+
+Por lo tanto:
+
+la instrumentación visible se considera contaminada.
+
+Estrategia actual:
+
+evitar attach visible.
+
+Observaciones sobre el binario
+
+Import surface de crypto:
+
+Muy reducido:
+
+BCryptCloseAlgorithmProvider
+
+No aparecen:
+
+PBKDF2
+BCryptHashData
+LoadLibrary
+GetProcAddress
+
+Esto sugiere que:
+
+el hashing está ofuscado
+o implementado manualmente
+o decodificado en runtime.
+
+También se detectaron:
+
+marcas SHA en dumps que parecen venir de ofuscación, no de API directa.
+
+Evaluación actual del progreso
+
+Estimaciones que diste en la evolución:
+
+Antes:
+
+bypass: 99%
+password: 89%
+
+Luego se ajustó de forma más realista:
+
+bypass estable: 74%
+password exacta: 58%
+global: 80%
+
+Motivo del ajuste:
+
+El crackme tiene más protección de lo que parecía al principio.
+
+Estrategia actual del proyecto
+
+Objetivo inmediato:
+
+Encontrar el productor real del estado en R8, no seguir parcheando branches.
+
+Pasos clave definidos:
+
+1 seguir la rama buena desde
+
+0x1468d67f8 / 0x1468d67fa
+
+2 distinguir claramente las tres salidas
+
+reject
+trap
+reentrada
+
+3 encontrar la condición mínima que evite:
+
+reject
+trap simultáneamente.
+
+Estado de automatización con Codex
+
+Intentaste dejar a Codex trabajando solo toda la noche.
+
+Comandos probados:
+
+Intento inicial:
+
+codex run --dangerously-auto-approve-everything --max-iterations 100000
+
+Error: flag no existe.
+
+El CLI sugirió:
+
+--dangerously-bypass-approvals-and-sandbox
+
+Comando correcto en tu build:
+
+codex run --dangerously-bypass-approvals-and-sandbox
+
+Luego intentaste añadir:
+
+--max-iterations
+
+pero tu versión del CLI no lo soporta.
+
+También querías que hiciera:
+
+/resume
+
+del último contexto.
+
+Conclusión:
+
+El CLI reanuda contexto si se ejecuta desde la carpeta del proyecto.
+
+Recomendación:
+
+Ejecutarlo desde:
+
+C:\Users\nesca\Desktop
+
+no desde:
+
+System32
+
+Estado actual del reto
+
+Situación real ahora:
+
+la zona correcta del binario ya está localizada
+la instrumentación está bloqueada
+el bypass depende del estado interno
+el crackme probablemente usa anti-tamper real.
+
+Lo importante:
+
+Ya no estás perdido en el binario completo.
+
+Eso cambia mucho la dificultad restante.
+
+Probabilidad real actual (estimación técnica)
+
+Basado en lo que descubriste:
+
+zona correcta localizada: muy alta
+bypass final posible: bastante probable
+password real: todavía incierta
+
+Estimación aproximada:
+
+bypass estable: 7085%
+password exacta: 4060%
+Mi lectura honesta del proyecto
+
+Tu reversing está en una fase muy típica:
+
+fase final de crackme protegido.
+
+Esto suele ser:
+
+más lento
+pero con progreso acumulativo.
+
+Lo más importante es que ya encontraste:
+
+la bisagra tardía real del programa.
+
+Eso suele ser lo que más cuesta.
+
+Si mañana continuas el reversing
+
+El siguiente paso más rentable sería:
+
+buscar dónde se produce:
+
+R8 antes de 0x1468d67f8
+
+Ese punto probablemente sea:
+
+el validador final
+o la máquina de estados del crackme.
+
+Y ahí suele estar:
+
+o el bypass limpio
+o la lógica real de la password.
