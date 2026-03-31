@@ -1,12 +1,13 @@
 ﻿# Crackme Worklog
 
-This repository tracks the reverse engineering work for the protected Windows x64 console crackme currently opened in Ghidra.
+This repository tracks the reverse engineering work for `NecrumWin` from the `Reezli challenge`, a protected Windows x64 console crackme currently opened in Ghidra.
 
 Primary goal: recover the exact password.
 Secondary goal: produce a clean bypass or acceptance patch.
 
 ## Challenge Summary
 
+- Project / challenge name: `NecrumWin (Reezli challenge)`
 - Target type: native Windows console executable
 - Architecture: x64
 - Claimed language: C++17
@@ -16,9 +17,9 @@ Secondary goal: produce a clean bypass or acceptance patch.
 
 ## Current Status
 
-- Overall progress estimate: 96%
-- Bypass probability: 98%
-- Exact-password recovery probability: 81%
+- Overall progress estimate: 98%
+- Bypass probability: 99%
+- Exact-password recovery probability: 88%
 
 The active path is not a normal compare routine. The visible console flow is protected by a VM-like dispatcher and runtime-unpacked code. The current investigation works from confirmed live execution hotspots rather than imports, CRT compares, or obvious crypto exports.
 
@@ -36,6 +37,13 @@ The active path is not a normal compare routine. The visible console flow is pro
 - `RDI` and `R8` look like stable state tables in the post-validation block.
 - The input-dependent live state is mainly visible in `RAX`, `RBX`, and `RSI`.
 - The block around `0x23e05cd` has at least one duplicate template elsewhere in the unpacked code, consistent with VM handlers rather than a single handwritten compare path.
+- The late-stage route is now constrained to the chain:
+  - `0x1475ba2e2`
+  - `0x1475b9460`
+  - `0x1475b9494`
+  - `0x1475a3b17`
+- Forcing `0x1475b9494 -> 0x1475a3b17` materially changes the convergence counts, so that branch is real and late.
+- The next real target from that forced branch is `0x145034f48`.
 
 ## Runtime Workflow
 
@@ -49,159 +57,6 @@ Current runtime workflow:
 4. Sample process state through module enumeration, `ReadProcessMemory`, and `GetThreadContext` on the main thread.
 5. Save or inspect live module dumps and targeted private memory regions.
 6. Use Ghidra/MCP only for focused static pivots and confirmation.
+7. Use batch tracing and targeted in-memory patches to compare late-stage handler selection.
 
 This workflow is reproducible and produces stable hotspot sequences without triggering the obvious anti-debug path.
-
-## Important Live Offsets
-
-### Prompt-side
-
-- `0x55d9c83`
-- `0x55d9c1c`
-- `0x5c68c01`
-- `0x5d24729`
-- `0x57faee8`
-
-### Post-validation
-
-- `0x2cf67df`
-- `0x236fe1a`
-- `0x23e05cd`
-
-### Helper and pivot targets
-
-- `FUN_1455d8b6f`
-- `FUN_145c13f7e`
-- `FUN_145d24744`
-- `0x145c2de89`
-- `0x14755ce70`
-- `0x1474c3aa1`
-- `0x14758e1b3`
-- `0x14738a7b0`
-
-## Confirmed Live Execution Sequence
-
-With a normal wrong-password attempt and no debugger:
-
-1. The main thread executes prompt-side logic around `0x55d9c83`, `0x55d9c1c`, `0x5c68c01`, and `0x5d24729`.
-2. The flow then transitions into the post-validation block `0x2cf67df -> 0x236fe1a -> 0x23e05cd`.
-3. After that, execution settles into system-side waiting / console-loop behavior.
-
-This is the most useful concrete execution map recovered so far.
-
-## Static And Capstone Observations That Matter
-
-- The binary behaves like a protected VM-dispatched sample rather than a simple native compare routine.
-- `FUN_1455da9fd -> FUN_14567590c -> FUN_145f629b9 -> indirect dispatch` is a real dispatcher shape near the live prompt range.
-- `FUN_145c68c01` is a one-instruction trampoline that jumps to `0x145c2de89`.
-- `FUN_145d24744` is a tiny helper ending in `ret 8`.
-- `0x14736fe1a` disassembles as:
-  - `xor esi, ebx`
-  - `jmp 0x1473e05c8`
-- The lead-in immediately before it includes:
-  - `shr esi, 8`
-  - `jbe 0x1475ac56a`
-  - `dec word ptr [rsp + 0x12]`
-- `0x1473e05c3` calls `0x14755ce70`.
-- `0x1473e05e7` executes `xor esi, 0xe7a90182`.
-- `0x1473e05f0` calls `0x1474c3aa1`.
-- The branch block at `0x147cf67df` begins with `jne 0x147311abb`.
-- `0x14758e1b3` and `0x14738a7b0` continue the same obfuscated handler style.
-- The immediate `0xe7a90182` appears in the confirmed block at `0x23e05e9` and in at least one duplicated handler region around `0x57d1738`.
-
-## Register-State Findings
-
-At `0x236fe1a` and `0x23e05cd`:
-
-- `RCX` is stable at `0x3791ca2a`.
-- `RDX` is stable at `0x20000`.
-- `RDI` is stable and points to a live state table.
-- `R8` is stable and points to another live buffer / table.
-- `RAX`, `RBX`, and `RSI` change with the supplied password.
-
-Examples from clean runs:
-
-- Input `aaaa`
-  - `RBX = 0xcdc62a16`
-  - `RSI = 0xcdd7dac1`
-- Input `bbbb`
-  - `RBX = 0xa7760ae4`
-  - `RSI = 0xa7824cdd`
-- Input `password`
-  - `RBX = 0x33123160`
-  - `RSI = 0x33790962`
-- Input `verify_hwid_pass`
-  - `RBX = 0xf87382ec`
-  - `RSI = 0xf8929a47`
-
-No simple direct relation has been proven yet, but the state is clearly password-dependent.
-
-## Patch Experiments And Outcomes
-
-### Failed or unsafe patches
-
-- Patching `FUN_1455da550`
-  - does not change the visible wrong-password result
-  - confirms it is not the decisive compare in the active path
-- NOPing the call at `0x57faee8`
-  - changes control flow
-  - crashes the process with `0xC0000005`
-- Forcing `FUN_145c13f7e` to `ret`
-  - also crashes with `0xC0000005`
-- Replacing the call at `0x5d2473f` with `add rsp, 8; nop`
-  - still crashes
-- Naively skipping the direct calls around `0x23e05cd`
-  - does not yield a clean bypass
-
-Conclusion: the prompt-side helpers and the immediate post-validation handlers are structurally important. Crude removal of side effects is not enough.
-
-### Productive branch patch
-
-- Patching the branch at `0x2cf67df` by neutralizing its leading conditional jump changes the post-input execution path without immediately crashing.
-
-Observed effect:
-
-- Baseline post-input RIP settles near `0x236fe1a`.
-- With the branch patch, the path diverts and temporarily returns to prompt-side offsets near `0x55d8ff7`.
-
-That makes `0x2cf67df` one of the strongest current candidates for a later clean bypass, even though the first patch does not yet force acceptance.
-
-## Strings And Output Notes
-
-Visible runtime text includes:
-
-- `a: auth_login_success`
-- `b: https://keyauthh.io/register`
-- `Enter password:`
-- `Wrong.`
-- `Press Enter to exit...`
-
-Important caveat:
-
-- `Wrong.`
-- `Detected.`
-- `Enter password:`
-
-were not found plainly in the checked on-disk image, the live module dump, or the searched private-memory dumps. That strongly suggests they are materialized indirectly, reconstructed late, or emitted through a path not yet captured in the saved dumps.
-
-## Helper Tooling Added During The Project
-
-- Reconfigured the local Ghidra MCP bridge timeout so long decompilations were more usable.
-- Installed Capstone locally to disassemble hotspot bytes directly from `mod_after.bin`.
-- Added a reusable live-capture script at `C:\Windows\System32\crackme_capture.py` to launch the crackme, inject input, and dump live register / memory state without a debugger.
-
-## Discarded Paths
-
-- `.pwdprot` as a direct password source for the live path
-- `FUN_1455da550` as the active comparator
-- tokens near `auth_login_success` as direct password candidates
-- simple SHA-256-in-memory expectations from test inputs
-- standard API-level tracing as the main route to the check
-- crude prompt-side call removal as a reliable bypass strategy
-
-## Immediate Next Steps
-
-1. Follow the duplicated `0xe7a90182`-based handler template and determine where it converges with the `0x2cf67df` rejection path.
-2. Characterize the exact role of `0x2cf67df` with more surgical branch modification instead of all-NOP forcing.
-3. Keep using the no-debugger console-driving workflow as the main dynamic method.
-4. Pivot back to exact password recovery as soon as one of the post-validation nodes yields a recoverable comparison state or narrowing condition.

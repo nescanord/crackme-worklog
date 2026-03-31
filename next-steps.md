@@ -1,9 +1,11 @@
 ﻿# Next Actions
 
-1. Follow the late-stage chain `0x1477aa994 -> 0x14755c714 -> 0x147802244 -> 0x147901c6c -> 0x1475e525a`.
-2. Test the `jne` at `0x1475e525f` and determine whether it is closer to the real success-versus-rejection split.
-3. Keep using real-console execution plus `CONIN$` injection and `GetThreadContext` sampling as the primary dynamic workflow.
-4. Use local dump disassembly for focused pivots instead of broad Ghidra sweeps over the VM.
-5. If one of the late-stage branches collapses to a stable success-state selector, pivot immediately to:
-   - a minimal bypass patch
-   - and an attempt to infer the expected final password-derived state
+1. Attack the late-stage branch centered on `0x1475b9494` rather than earlier VM handlers.
+2. Follow the forced branch target path:
+   - `0x1475a3b17`
+   - `0x145034f48`
+3. Determine whether `0x145034f48` is the immediate terminal dispatcher target for success or reject.
+4. Keep using batch tracing and targeted in-memory patches as the primary runtime workflow.
+5. If `0x145034f48` yields a clean divergence, convert it into:
+   - a 1-2 instruction bypass patch
+   - or the shortest possible pivot to recover the expected password-derived state

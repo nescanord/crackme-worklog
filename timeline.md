@@ -63,49 +63,12 @@ Post-validation sequence:
 
 This is the clearest execution path recovered so far.
 
-## Prompt-Side Patch Experiments
-
-- NOP on the call at `0x57faee8`
-  - flow changes
-  - process crashes with `0xC0000005`
-- `ret` patch on `FUN_145c13f7e`
-  - also crashes
-- replacing the call at `0x5d2473f` with a stack-preserving `add rsp, 8; nop`
-  - still crashes
-
-Conclusion:
-
-- the prompt-side helpers are structurally important
-- removing them crudely is not enough
-
-## Post-Validation Branch Experiment
-
-- Raw bytes around `0x2cf67df` exposed a conditional branch at the head of the block.
-- NOPing that conditional branch produced a real control-flow diversion without immediate crash.
-- With that patch:
-  - execution no longer went straight into the usual `0x236fe1a` path
-  - it briefly returned to prompt-side offsets near `0x55d8ff7`
-  - it later still reached rejection-side territory
-
-This made `0x2cf67df` one of the best current branch candidates for a future clean bypass.
-
-## Register-State Capture Phase
+## Register-State And Batch Phase
 
 - Stable no-debugger captures were collected at `0x236fe1a` and `0x23e05cd`.
 - `RCX = 0x3791ca2a`, `RDX = 0x20000`, `RDI`, and `R8` remained stable.
 - `RAX`, `RBX`, and `RSI` changed with the tested input strings.
-- This shifted the analysis from API hunting to state tracking inside the VM handlers.
-
-## Local Disassembly Phase
-
-- Capstone was installed locally so hotspot bytes could be disassembled directly from `mod_after.bin`.
-- The real handler pattern was confirmed around:
-  - `0x14736fe1a`
-  - `0x1473e05cd`
-  - `0x147cf67df`
-  - `0x14755ce70`
-  - `0x1474c3aa1`
-- A duplicated handler template containing the same `xor esi, 0xe7a90182` sequence was found elsewhere in the unpacked code.
+- Batch tracing with similar inputs showed that `RBX` changes strongly and behaves like a late-stage mixed state rather than a small incremental counter.
 
 ## Late Convergence Narrowing
 
@@ -117,14 +80,20 @@ This made `0x2cf67df` one of the best current branch candidates for a future cle
 - The branch at `0x1477dd120` looked promising but forcing or skipping it did not stop convergence through `0x27dd114 / 0x2802257`.
 - The next branch at `0x14785312b` also looked terminal at first, but forcing or skipping it likewise failed to produce a clean bypass.
 
+## Current Late-Stage Focus
+
+- The strongest late-stage chain is now:
+  - `0x1475ba2e2`
+  - `0x1475b9460`
+  - `0x1475b9494`
+  - `0x1475a3b17`
+  - `0x145034f48`
+- `cmp ebx, 1` was tested as a direct patch point and did not by itself open the success path.
+- Forcing `0x1475b9494 -> 0x1475a3b17` materially changed the convergence counts and confirmed that this branch is real and very late.
+- The forced branch does not continue to the later linear `jmp r9`; instead it takes an earlier unconditional jump into `0x145034f48`.
+
 ## Current Posture
 
 - The password has not been recovered yet.
-- The route to a bypass is still narrow, but the terminal split appears deeper than the first two late-stage branch candidates.
-- The strongest current chain is:
-  - `0x1477aa994`
-  - `0x14755c714`
-  - `0x147802244`
-  - `0x147901c6c`
-  - `0x1475e525a`
-- The next branch to test is `0x1475e525f` and its target `0x1475ba298`.
+- The cleanest current bypass candidate is no longer an early handler branch but the late-stage branch centered on `0x1475b9494`.
+- The next target to break is `0x145034f48`, which is now the most likely immediate successor to the branch-controlled terminal path.

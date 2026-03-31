@@ -20,6 +20,13 @@
   - `RAX=0x2a`, `RBX=1`
 - `0x14755c736` is a direct caller into `0x147802244`.
 - `0x1477aa994 -> 0x14755c714 -> 0x147802244 -> ... -> 0x147901c6c -> 0x1475e525a` is part of the live late-stage chain.
+- `RBX` behaves like a heavily mixed late-stage state and changes strongly even for near-identical inputs.
+- The late-stage critical zone is now narrowed to:
+  - `0x1475ba2e2`
+  - `0x1475b9460`
+  - `0x1475b9494`
+  - `0x1475a3b17`
+  - `0x145034f48`
 
 ## Runtime Observations
 
@@ -40,6 +47,7 @@
   - `0x27dd114`
   - `0x2802257`
 - Patching or forcing branches in that late cluster changes local hit counts but has not yet broken the wrong-password route cleanly.
+- Forcing `0x1475b9494 -> 0x1475a3b17` changes the convergence counts more than baseline, which confirms that the branch is real and late in the visible validation route.
 
 ## Disassembly Notes
 
@@ -54,6 +62,12 @@
 - `0x147853126`: `lea rsp, [rsp + 0x30] ; jne 0x1477aa994`
 - `0x1477aa994`: `movzx edx, byte ptr [rdi] ; call 0x14755c714 ; call 0x147901c6c ; ... ; call 0x1475e525a`
 - `0x1475e525f`: `jne 0x1475ba298`
+- `0x1475ba2e2`: `jne 0x1475b9460`
+- `0x1475b948e`: `cmp ebx, 1`
+- `0x1475b9494`: `jmp 0x147616360`
+- `0x14761637a`: `jae 0x1475a3b17`
+- `0x1476163c0`: `jmp rdi`
+- `0x1475a3b37`: `jmp 0x145034f48`
 - There is another handler-like block around `0x14a7d171e` that reproduces the same `sar ...`, `inc r11`, `push 0x54bdce0b`, `xor esi, 0xe7a90182` pattern.
 
 ## Patch Behavior
@@ -66,6 +80,7 @@
 - Naively skipping direct calls around `0x23e05cd` does not produce a clean bypass.
 - Forcing or skipping the `jle` at `0x1477dd120` does not prevent convergence through `0x27dd114 / 0x2802257`.
 - Forcing or skipping the `jne` at `0x14785312b` also fails to produce a clean bypass.
+- Forcing `0x1475b9494 -> 0x1475a3b17` changes the route significantly, but does not yet expose a visible success path.
 
 ## Strings And Output
 
@@ -88,3 +103,4 @@ The strings `Wrong.`, `Detected.`, and `Enter password:` were not found plainly 
 - crude prompt-side call removal as a reliable bypass strategy
 - `0x1477dd120` as the terminal success-versus-rejection branch
 - `0x14785312b` as the terminal success-versus-rejection branch
+- `cmp ebx, 1` as a standalone final gate
