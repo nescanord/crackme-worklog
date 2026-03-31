@@ -210,3 +210,81 @@ Most likely solve order from the current position:
 
 1. Derive a stable bypass from the late-state gate.
 2. Use that stabilized route to recover the exact password if needed.
+
+## 18. Root Selector Recovered Above The ESI Gate
+
+The next major step upward was identifying that the late `ESI` branch was not the root selector. Static work on the unpacked runtime image recovered a smaller selector immediately before the gate:
+
+- `test r10w, 0x71ab`
+- `sete r8b`
+- `add r8d, r8d`
+- `call 0x1468d67b5`
+
+This changed the model of the crackme again. At this point the late decision was no longer treated as a single bad branch to skip, but as a coherent state bundle with `R10` above `R8`, and `R8` above the later `ESI` normalization.
+
+## 19. Multi-Thread Tracing
+
+The original batch tracer only sampled the main thread. That proved insufficient once it became clear that the process spawns multiple workers after input submission.
+
+To handle that, `crackme_allthread_trace.py` was created. The result was important:
+
+- the classic prompt/reject network could still be observed cleanly,
+- but only when tracing all threads,
+- confirming that part of the validation machinery runs outside the original main-thread-only view.
+
+This explained why some promising selector points were affecting behavior without ever showing up in the first-generation tracer.
+
+## 20. Runtime Materialization Confirmed
+
+The newer selector block did not initially appear to exist at its RVA in the live module image because early reads returned zeros. A dedicated probe later showed that the bytes are materialized at runtime after startup, even before password entry.
+
+That led to `crackme_spin_probe.py`, a helper designed to freeze short-lived hotspots with a self-loop patch and inspect the resulting thread state.
+
+Even when direct freezing did not land cleanly, this work proved that some of the late logic is genuinely reconstructed in memory rather than statically available from the original mapped image.
+
+## 21. Coherent-State Forcing Through R10
+
+Once the `R10 -> R8 -> ESI` chain was understood, a stronger experiment was run:
+
+- instead of forcing `R8`,
+- and instead of forcing `ESI`,
+- force `R10` itself before the selector.
+
+Patch used:
+
+- `0x11fa329 -> 45 31 d2 90 90 90`
+
+This was the first attempt to preserve local consistency inside the selector rather than just skipping its output branch.
+
+Observed result:
+
+- all known prompt and reject hotspots disappeared from tracing,
+- but the sample still did not reveal a success path,
+- and later sampling showed the process parked in wait-heavy `ntdll` code.
+
+This was a useful failure. It confirmed that `R10` is indeed above the selector, but also showed that `R10=0` is not a naturally valid success state.
+
+## 22. Candidate Password Sweep
+
+Because the project had spent a long time in the protection layer, a parallel low-cost sweep was made against obvious semantic candidates drawn from the binary and challenge naming:
+
+- `NecrumWin`
+- `Reezli`
+- `reezli`
+- `verify_hwid_pass`
+- `keyauthh.io/register`
+- `bruh`
+- `KeyAuth`
+- `auth_login_success`
+
+All of them still converged into the classic rejection profile. This was worth recording because it closed the door on the idea that the password might simply be an exposed token or challenge string.
+
+## 23. Current Narrow Problem
+
+The current unsolved problem is no longer “find the validator.” That part is over.
+
+The remaining problem is:
+
+- find the producer of `R10`,
+- understand what valid late-state it is expected to encode,
+- and turn that into either a stable bypass or the exact password.

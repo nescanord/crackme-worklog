@@ -1,0 +1,49 @@
+{
+  "target": "0x11fa329",
+  "results": [
+    {
+      "input": "test",
+      "pid": 36624,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x11fa329",
+      "target_va": "0x7ff74c4ca329",
+      "original_bytes": "6641f7c2ab71410f",
+      "context": null,
+      "exit_code": "0x103"
+    },
+    {
+      "input": "auth_login_success",
+      "pid": 8332,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x11fa329",
+      "target_va": "0x7ff74c4ca329",
+      "original_bytes": "6641f7c2ab71410f",
+      "context": null,
+      "exit_code": "0x103"
+    },
+    {
+      "input": "aaaa",
+      "pid": 8504,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x11fa329",
+      "target_va": "0x7ff74c4ca329",
+      "original_bytes": "6641f7c2ab71410f",
+      "context": null,
+      "exit_code": "0x103"
+    },
+    {
+      "input": "aaab",
+      "pid": 18696,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x11fa329",
+      "target_va": "0x7ff74c4ca329",
+      "original_bytes": "6641f7c2ab71410f",
+      "context": null,
+      "exit_code": "0x103"
+    }
+  ]
+}

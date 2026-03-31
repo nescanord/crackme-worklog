@@ -1,0 +1,43 @@
+{
+  "targets": [
+    "0x55d9076",
+    "0x5d24729",
+    "0x5d2473f",
+    "0x236fe1a",
+    "0x23e05cd",
+    "0x27dd114",
+    "0x2802257"
+  ],
+  "results": [
+    {
+      "input": "test",
+      "pid": 7876,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [
+        {
+          "rva": "0x11fa329",
+          "bytes": "4531d2909090"
+        }
+      ],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x103"
+    },
+    {
+      "input": "auth_login_success",
+      "pid": 9556,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [
+        {
+          "rva": "0x11fa329",
+          "bytes": "4531d2909090"
+        }
+      ],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x103"
+    }
+  ]
+}

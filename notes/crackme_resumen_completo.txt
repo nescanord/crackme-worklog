@@ -1,0 +1,89 @@
+﻿CRACKME.EXE - RESUMEN COMPLETO ACTUALIZADO
+Fecha: 2026-03-31
+
+ESTADO ACTUAL
+- Seguimos sobre la muestra restaurada en C:\Users\nesca\Desktop\crackme.exe.
+- La ruta útil sigue siendo sin debugger visible, usando consola real e inyección por CONIN$.
+- El objetivo principal sigue siendo recuperar la password exacta; el bypass limpio va por delante en probabilidad.
+
+PORCENTAJE ACTUAL
+- Global: 97%
+- Patch / bypass: 99%
+- Password exacta: 85%
+
+LO QUE YA ESTA DESCARTADO
+- .pwdprot como fuente directa de la password real de la ruta activa.
+- FUN_1455da550 como comparador decisivo del check visible.
+- strcmp, memcmp, strncmp, wcscmp y rutas CRT/CNG típicas como núcleo del check real.
+- Parcheos brutos en prompt-side como bypass limpio.
+- 0x1477dd120 como bifurcación terminal real.
+- 0x14785312b como bifurcación terminal real.
+
+RUTA DINAMICA REAL CONFIRMADA
+Prompt-side:
+- 0x55d9c83
+- 0x55d9c1c
+- 0x5c68c01
+- 0x5d24729
+
+Post-validación temprana:
+- 0x2cf67df
+- 0x236fe1a
+- 0x23e05cd
+
+Convergencia tardía:
+- 0x27dd114
+- 0x2802257
+
+HALLAZGOS IMPORTANTES
+- 0x2cf67df es puerta de entrada al check real, no el nodo final.
+- ESI se usa como estado derivado dentro de handlers VM-like; no aparece todavía un compare simple terminal en los nodos observados.
+- 0x14755c736 llama directamente a 0x147802244.
+- La salida de la VM colapsa en dos familias de estado antes de entrar en ntdll.dll:
+  - familia A: RAX=0x28, RBX=0
+  - familia B: RAX=0x2a, RBX=1
+- Esas familias parecen representar resultado ya colapsado, pero el split real todavía está justo antes.
+
+CADENA TARDIA MAS FUERTE AHORA MISMO
+- 0x1477aa994
+- 0x14755c714
+- 0x147802244
+- 0x147901c6c
+- 0x1475e525a
+
+BRANCHES TARDIOS YA PROBADOS Y DESCARTADOS COMO TERMINALES
+1. 0x1477dd120
+- Instrucción: jle 0x1477e8459
+- Forzarlo o anularlo no evita la convergencia por 0x27dd114 / 0x2802257.
+- No da bypass limpio.
+
+2. 0x14785312b
+- Instrucción: jne 0x1477aa994
+- Forzarlo o anularlo tampoco rompe la ruta de rechazo ni genera bypass limpio.
+
+SIGUIENTE CANDIDATO REAL
+- 0x1475e525f
+- Instrucción: jne 0x1475ba298
+- Ahora mismo es el mejor siguiente branch a probar como posible split tardío más cercano a la decisión real.
+
+HERRAMIENTAS Y METODOLOGIA USADA
+- crackme_capture.py en C:\Windows\System32\crackme_capture.py
+- Captura sin debugger usando:
+  - CreateProcessW con CREATE_NEW_CONSOLE
+  - AttachConsole / CONIN$
+  - GetThreadContext
+  - ReadProcessMemory
+- Disassembly local desde mod_after.bin con Capstone.
+- Ghidra/MCP solo para pivotes puntuales, no para barridos completos de la VM.
+
+REPOSITORIO DE WORKLOG
+- Local: C:\Users\nesca\Desktop\crackme-worklog
+- GitHub: https://github.com/nescanord/crackme-worklog
+- Último commit subido: 083fba1
+- Mensaje: Update late-stage branch analysis
+
+CONCLUSION PRACTICA
+- No estamos dando vueltas en vacío.
+- El espacio útil está ya muy acotado.
+- El nodo terminal real parece estar más abajo de lo que parecía inicialmente, pero la cadena tardía correcta ya está identificada.
+- La siguiente acción con mejor retorno es seguir 0x1475e525a y probar 0x1475e525f / 0x1475ba298.

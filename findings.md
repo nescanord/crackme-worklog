@@ -91,6 +91,30 @@ Current best candidate split:
 
 This branch is later and more useful than the earlier `cmp ebx, 1` patch point.
 
+## Root Selector Above The ESI Gate
+
+Confirmed immediately above the late gate:
+
+- `test r10w, 0x71ab`
+- `sete r8b`
+- `add r8d, r8d`
+- `call 0x1468d67b5`
+
+Meaning:
+
+- `R8` is a derived projection of `R10`
+- the late `ESI` split is downstream of that projection
+- forcing `R8` alone is not sufficient because the callee also consumes `R10`
+
+Observed late-loop `R10` values are stable per input:
+
+- `test -> 0x83090ff3d0`
+- `auth_login_success -> 0xb789b6fba0`
+- `aaaa -> 0xb485aff480`
+- `aaab -> 0x56bceffa10`
+
+In all of these bad-input cases, `r10w & 0x71ab` is non-zero.
+
 ## Patch Results
 
 ### Crude Prompt-Side Patches
@@ -131,6 +155,29 @@ Interpretation:
 - the fallthrough side is not a universal success path,
 - at least one trap or exceptional branch exists in this area.
 
+### Coherent R10 Forcing
+
+Patch tested:
+
+- `0x11fa329 -> 45 31 d2 90 90 90`
+
+Purpose:
+
+- force `R10=0` before the `test`
+- let the downstream `sete/add` build the alternate `R8` state naturally
+
+Observed effect:
+
+- all known prompt/reject hotspots disappear from tracing
+- no visible success path appears
+- the process appears to park in `ntdll` wait-style code
+
+Interpretation:
+
+- `R10` is definitely upstream of the visible late selector
+- but `R10=0` is not a valid acceptance state
+- this is a diagnostic patch, not a stable bypass
+
 ## GUI Path Findings
 
 - A new GUI dialog with text `bruh` appeared during some late-stage patch experiments.
@@ -155,9 +202,10 @@ Interpretation:
 - `0x14785312b` as the final success/reject split
 - `cmp ebx, 1` as a standalone terminal gate
 - the `bruh` popup as the main success lead
+- semantic candidate passwords such as `NecrumWin`, `Reezli`, `verify_hwid_pass`, `KeyAuth`, and `auth_login_success`
 
 ## Current Solve Posture
 
 - Bypass is closer than exact-password recovery.
 - The problem is no longer broad exploration; it is a late-stage state and dispatch problem.
-- The highest-value remaining work is around the late ESI-based split and the exact branch/handler that separates stable acceptance from rejection or trap paths.
+- The highest-value remaining work is now the producer of `R10`, which feeds the `R10 -> R8 -> ESI` selector chain.

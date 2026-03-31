@@ -1,0 +1,53 @@
+{
+  "targets": [
+    "0x11fa329",
+    "0x11fa32f",
+    "0x11fa336",
+    "0x18d67c3",
+    "0x18d67d2",
+    "0x18d67f8",
+    "0x18d67fa"
+  ],
+  "results": [
+    {
+      "input": "test",
+      "pid": 34656,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x103"
+    },
+    {
+      "input": "auth_login_success",
+      "pid": 36384,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x103"
+    },
+    {
+      "input": "aaaa",
+      "pid": 26864,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x103"
+    },
+    {
+      "input": "aaab",
+      "pid": 32632,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [],
+      "counts": {},
+      "hits": [],
+      "exit_code": "0x103"
+    }
+  ]
+}

@@ -2,24 +2,25 @@
 
 ## Immediate Priorities
 
-1. Continue treating the late `ESI` split around `0x1468d67f8 / 0x1468d67fa` as the strongest active gate.
-2. Distinguish the three outcomes currently visible from that area:
+1. Trace the producer of `R10` above `test r10w, 0x71ab -> sete r8b -> add r8d, r8d`.
+2. Determine whether `R10` is returned from a call, decoded from a table, or reduced from a larger VM state object.
+3. Identify what late-state properties separate a valid `R10` from:
    - classic reject-loop reentry,
    - prompt-side-only reentry,
-   - exceptional/trap path such as `0xdeadc0de` or GUI popup.
-3. Identify the first branch after the `ESI`-conditioned split that distinguishes stable accept from trap.
+   - exceptional/trap paths such as `0xdeadc0de` or GUI popup,
+   - deadlock/wait behavior seen under `R10=0`.
 
 ## Best Short-Term Bypass Path
 
-The best short-term route is still a minimal late-stage patch, not an early prompt-side patch.
+The best short-term route is now a coherent late-state patch, not a local branch kill.
 
-Current best family to refine:
+Current best direction:
 
-- `0x5b9494 -> e9 7e f6 fe ff`
-- `0x34f63 -> e9 04 53 1c 01 90`
-- late `ESI` conditioning at `0x18d67f8` or `0x18d67fa`
+- avoid forcing `ESI` or `R8` in isolation,
+- derive or inject a valid `R10` state instead,
+- only return to the older `0x5b9494 / 0x34f63 / 0x18d67f8` family if the upstream `R10` producer proves too opaque.
 
-The next iteration should prefer state forcing over branch destruction whenever possible.
+The next iteration should prefer coherent state synthesis over branch destruction.
 
 ## Best Short-Term Password Path
 
@@ -32,6 +33,8 @@ If the bypass stabilizes first, reuse the bypassed state to:
 ## Scripts To Extend If Needed
 
 - `C:\Users\nesca\Desktop\crackme_batch_trace.py`
+- `C:\Users\nesca\Desktop\crackme_allthread_trace.py`
+- `C:\Users\nesca\Desktop\crackme_spin_probe.py`
 - `C:\Users\nesca\Desktop\crackme_popup_probe.py`
 
-The tracer remains the highest-value automation asset in the project.
+The tracer family remains the highest-value automation asset in the project.

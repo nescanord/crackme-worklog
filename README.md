@@ -26,11 +26,11 @@ That workflow recovered a reproducible live path through the prompt side and the
 
 ## Current Assessment
 
-- Overall progress estimate: `98%`
-- Stable bypass probability: `99%`
-- Exact-password recovery probability: `89%`
+- Overall progress estimate: `82%`
+- Stable bypass probability: `74%`
+- Exact-password recovery probability: `50%`
 
-These percentages reflect how tightly the live route is now constrained, not that the sample is already solved. A bypass is still more likely to land before the exact password.
+These percentages replace the earlier optimistic estimates. The late-state network is correctly localized, but the sample still rejects or deadlocks when that state is forced incoherently.
 
 ## What Was Ruled Out Early
 
@@ -80,6 +80,18 @@ Several helper assets were created to support repeatable runtime work.
   - Reproduces the newer GUI-side path under the current late-stage patch set.
   - Enumerates windows owned by the process.
   - Used to determine whether the new `bruh` popup was a success clue or just an alternate exceptional path.
+
+- `C:\Users\nesca\Desktop\crackme_allthread_trace.py`
+  - Multi-thread sampler created after confirming that the post-input phase spawns several worker threads.
+  - Used to prove that the classic reject path survives outside the original main-thread-only tracer.
+
+- `C:\Users\nesca\Desktop\crackme_spin_probe.py`
+  - Attempts to freeze ultra-short-lived runtime-materialized code with a self-loop patch and then dump register state.
+  - Helped confirm that some selector blocks only exist in memory after startup.
+
+- `C:\Users\nesca\Desktop\crackme_frida_gate_probe.py`
+  - Frida experiment retained for completeness.
+  - Downgraded after repeated empty runs (`records = []`) showed that Frida either perturbs the crackme or gets detected early.
 
 ### Supporting Artifacts
 
@@ -241,6 +253,50 @@ This produced a better result than brute NOPing the conditional branch:
 
 Conclusion: the fallthrough side of the `neg esi` / `jne` split is not a clean global success path. It is either a trap, a secondary validation path, or a partially successful diversion that still depends on additional state.
 
+## Root Selector Above `ESI`
+
+The most important newer finding is that the `ESI` gate is not the root selector. A smaller selector just above it builds `R8` from `R10`:
+
+- `test r10w, 0x71ab`
+- `sete r8b`
+- `add r8d, r8d`
+- `call 0x1468d67b5`
+
+This matters because forcing `R8` alone is too late. The callee also consumes `R10`, so a clean bypass has to preserve state coherence.
+
+### Coherent-State Patch Tested
+
+A stronger experiment forced the source state rather than the projection:
+
+- `0x11fa329 -> 45 31 d2 90 90 90` (`xor r10d, r10d`)
+
+Result:
+
+- all known prompt/reject hotspots disappear from tracing,
+- but no success path appears,
+- and the process instead parks in `ntdll` wait-style code.
+
+Conclusion:
+
+- `R10` is definitely above the late selector,
+- but `R10 = 0` is not a valid success state,
+- so this patch is diagnostic only, not a final bypass.
+
+## Semantic Candidate Sweep
+
+High-value token-like candidates taken from the challenge and visible naming were tested directly:
+
+- `NecrumWin`
+- `Reezli`
+- `reezli`
+- `verify_hwid_pass`
+- `keyauthh.io/register`
+- `bruh`
+- `KeyAuth`
+- `auth_login_success`
+
+All of them still fell into the classic rejection profile. No obvious embedded token unlocked the crackme.
+
 ## The `bruh` Dialog
 
 A new visible output started to appear during these later patch experiments: a GUI dialog with the text `bruh`.
@@ -258,21 +314,24 @@ The popup was not stable enough to use as the primary lead, so it has been demot
 High-confidence current statements:
 
 - The visible password check is not driven by standard CRT compares or obvious CNG exports.
+- The sample hashes match the published challenge exactly.
 - The sample reacts to debugger-based analysis, so clean no-debugger instrumentation is the correct dynamic approach.
 - The real runtime chain is known on both the prompt side and the post-validation side.
 - `RBX` behaves like a strongly mixed late-stage validation state.
-- The strongest current bypass lead is the late `ESI`-based split around `0x1468d67f8 / 0x1468d67fa` together with the earlier late dispatch at `0x1475b9494`.
+- The late `ESI`-based split around `0x1468d67f8 / 0x1468d67fa` is real, but a more root-level selector exists above it in `R10 -> R8`.
 - The fallthrough side of that late split is not yet a stable success path.
 - The branch target side also has not yet been reduced to a single visible success handler.
+- The next highest-value target is the producer of `R10`, not more local forcing of `ESI` or `R8`.
 
 ## Open Technical Questions
 
 The remaining unsolved questions are narrow compared to the start of the project:
 
-1. What exact condition distinguishes the clean rejection route from the stable acceptance route after the late-state network?
-2. Is the final solver state encoded primarily in `RBX`, in flags derived from `ESI`, or in a multi-register state bundle?
-3. Is the exact password recoverable from the late-state network without first producing a bypassed build?
-4. Is the `0xdeadc0de` path a deliberate anti-tamper trap reached by malformed late-state forcing?
+1. What exact producer writes the meaningful late-stage `R10` state before `test r10w, 0x71ab`?
+2. What exact condition distinguishes the clean rejection route from the stable acceptance route after the late-state network?
+3. Is the final solver state encoded primarily in `RBX`, in `R10`, in flags derived from `ESI`, or in a multi-register bundle?
+4. Is the exact password recoverable from the late-state network without first producing a bypassed build?
+5. Is the `0xdeadc0de` path a deliberate anti-tamper trap reached by malformed late-state forcing?
 
 ## Practical Solve Outlook
 
