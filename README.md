@@ -32,9 +32,9 @@ That workflow recovered:
 
 ## Current Assessment
 
-- Overall progress: `84%`
-- Stable bypass probability: `86%`
-- Exact password recovery probability: `36%`
+- Overall progress: `56%`
+- Stable bypass probability: `45%`
+- Exact password recovery probability: `40%`
 
 ## Confirmed Runtime Chains
 
@@ -145,23 +145,25 @@ This is currently the highest-signal local choke window in the whole crackme.
 
 ## Current Direction
 
-The problem is no longer broad exploration. The active line is now a late-stage anti-tamper chain that sits beyond the old `DEADC0DE` hard-error route.
+The current front line is the password path, not the late bypass chain.
 
-The best current idea is not "patch one final jump" but "unwind the trampoline chain coherently":
+What is now confirmed:
 
-- `0x1e0ae4c -> ret`
-- `0x1203bb4 -> add rsp, 8 ; ret`
-- `0x5a6c54a -> xor cx, cx ; nop`
-- `0x55efa2 -> ret`
-- `0x5898a23 -> ret`
+- `FUN_1455d8b6f` is a real range decoder / LZMA-like routine.
+- Its compressed input stream (`param_2`) is constant across different passwords and lives at `crackme+0x2d958c5`.
+- Its decoded output base (`param_5`) is also constant across different passwords and lives at `crackme+0x11ec000`.
+- The decoded output region is byte-for-byte identical across different passwords.
+- The decoder out-params (`param_4`, `param_7`) resolve to metadata structures that include `KnownDlls\\ntdll.dll`, not to a password buffer or digest.
+- The value that does change with the password is `param_3`, which has been observed as values such as `0x28`, `0x30`, `0x34`, `0x48`, and `0x5c`.
 
-That sequence does not solve the crackme yet, but it moves execution forward through multiple trap layers and brings control back into live module code instead of dying in the original sink.
+Interpretation:
 
-Latest observed progression:
+- the password is not changing the payload fed into the decoder
+- the password is not changing the decoder output blob
+- the password is changing state used by the caller of the decoder
 
-- original late sink: `crackme+0x1e0ae4c = xabort 0xDC`
-- after stack repair: AV at `crackme+0x5a6c54a`
-- after read neutralization: AV at wild target `0x800000023`
-- after unwinding another stub: AV inside the module at `crackme+0x446f267`
+The best current target is therefore:
 
-This is the strongest evidence so far that the bypass path is a chain of late dispatch trampolines rather than a single acceptance branch.
+- the caller that constructs `param_3`
+
+The old trampoline chain is still valid historical work, but it is no longer the primary path to the intended solution.

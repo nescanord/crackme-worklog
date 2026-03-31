@@ -473,3 +473,116 @@ This is the strongest current result:
 - the old `DEADC0DE` route is no longer the front line
 - `xabort` is no longer the front line
 - the problem is now a deeper late trampoline chain that can be unwound step by step
+
+## 38. Password Pivot: Decoder Arguments Recovered
+
+The analysis pivoted back to the intended goal: recovering the password rather than forcing acceptance.
+
+Two live dumps with different unique passwords were used to recover the saved arguments of the live decoder thread. This established:
+
+- `FUN_1455d8b6f` is a real range decoder / LZMA-like function
+- `param_2` is stable and points to `crackme.exe + 0x2d958c5`
+- `param_5` is stable and points to `crackme.exe + 0x11ec000`
+- `param_4` / `param_7` do not point to a password buffer or digest
+
+The strongest new finding was that:
+
+- `param_3` changes across inputs
+
+while:
+
+- the compressed stream
+- the decoded output base
+- the decoded output bytes
+
+all remain constant.
+
+This changes the interpretation of the decoder completely:
+
+- it is not the password validator
+- it is a generic runtime subsystem
+- the password influences caller state, not decoder payload
+
+## 39. Decoder Output Proved Constant Across Passwords
+
+The full segment rooted at:
+
+- `crackme.exe + 0x11ec000`
+
+was compared across two different live dumps captured after different unique passwords.
+
+Result:
+
+- `byte_diffs = 0`
+
+This is one of the most important eliminations in the project so far. It proves that the password is not encoded into the reconstructed blob written by the live decoder.
+
+## 40. Decoder Out-Params Downgraded
+
+The saved out-params recovered from the thread stack were inspected directly.
+
+Result:
+
+- the structures behind `param_4` and `param_7` include `KnownDlls\\ntdll.dll`
+
+Interpretation:
+
+- these are runtime subsystem metadata structures
+- they are not a hidden password buffer
+- they are not the final KDF output
+
+## 41. SHA256 Table Further Downgraded
+
+The old runtime-only table:
+
+- `salt(16)`
+- `digest(32)`
+- UTF-16 `SHA256`
+- `keyauth_*`
+- `auth_login_success`
+
+was tested more aggressively with:
+
+- `PBKDF2-HMAC-SHA256`
+- `ascii` and `utf16le`
+- iterations `1..2000`
+- strong runtime candidates and semantically likely tokens
+
+Result:
+
+- no hits
+
+This does not mathematically prove the table is irrelevant, but it is now strongly downgraded as the main password hypothesis.
+
+## 42. Post-Input Timeline Confirms Single Active Thread
+
+The process was sampled repeatedly for up to `2s` after submitting input.
+
+Result:
+
+- the active crackme-side path remained in a single thread
+- that thread stayed inside the `0x55d8xxx-0x55d9xxx` region
+- different inputs did, however, diverge into different late subzones such as:
+  - `0x55d903d`
+  - `0x55d9b2d`
+  - `0x55d9d54`
+
+Interpretation:
+
+- there is no hidden worker thread doing the real validation off to the side
+- the validation still lives in the prompt/decoder family
+- but the real password signal is now most likely the state handed to that family by its caller
+
+## 43. New Front Line
+
+At this point the highest-value target is no longer:
+
+- the late hard-error chain
+- the `SHA256` runtime table
+- or the decoder output blob
+
+The new front line is:
+
+- the caller that constructs `param_3` for `FUN_1455d8b6f`
+
+That caller is now the strongest candidate for the real password-dependent logic.

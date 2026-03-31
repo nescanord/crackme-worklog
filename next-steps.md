@@ -2,114 +2,88 @@
 
 ## Immediate Priority
 
-The main line is no longer the old `DEADC0DE` exit path and not even just `xabort`.
+The main line is now password recovery through caller-state reconstruction, not the late trampoline bypass chain.
 
-The active line is now:
+The active target is:
 
-- family-wide patch over the repeated local loop family
-- stack-aware bypass of the `xabort` sink
-- and progressive unwinding of the late trampoline chain after that sink
+- the caller that constructs `param_3` for `FUN_1455d8b6f`
 
-That means the active choke point has moved again, from the hard-error trap into a deeper late dispatcher sequence.
+## Why this is now the highest-value target
+
+What is already proved:
+
+- `param_2` of `FUN_1455d8b6f` is constant across different passwords
+- `param_5` of `FUN_1455d8b6f` is constant across different passwords
+- the decoded output region at `crackme.exe + 0x11ec000` is identical across different passwords
+- `param_4` and `param_7` do not carry a password buffer or final digest
+- `param_3` does change across different passwords
+
+This means the password does not select a different payload. It changes caller state that is handed to the decoder.
 
 ## Confirmed Current Choke Points
 
-- `0x55d9f14`
-- `0x55d9f27`
-- `0x55d9f40`
-- `0x55d9f4f`
-- `0x1e0ae4c`
-- `0x1203bb4`
-- `0x5a6c54a`
-- `0x55efa2`
-- `0x5898a23`
-- `0x55da697`
-- `0x446f267`
-
-Observed stack on the original `C000001D` path:
-
-- `crackme+0x1e0ae4c`
-- `crackme+0x1203bb4`
-- `crackme+0x55da8b5`
-
-Observed progression after stack-aware late patches:
-
-- `crackme+0x1e0ae4c`
-- `crackme+0x5a6c54a`
-- `0x800000023`
-- `crackme+0x446f267`
+- `FUN_1455d8b6f`
+- `crackme.exe + 0x2d958c5` as the stable decoder stream
+- `crackme.exe + 0x11ec000` as the stable decoder output base
+- the post-input single-thread timeline inside:
+  - `0x55d8xxx`
+  - `0x55d9xxx`
+- divergent late subzones such as:
+  - `0x55d903d`
+  - `0x55d9b2d`
+  - `0x55d9d54`
 
 ## Recommended Work Order
 
-1. Keep the repeated loop family patch as the reproducible base configuration.
-2. Keep the late patch pair that successfully crosses the old sink:
-   - `0x1e0ae4c -> ret`
-   - `0x1203bb4 -> add rsp, 8 ; ret`
-3. Treat every new AV as the next trampoline to unwind, not as a reason to fall back to the old trap line.
-4. Prioritize continuation-shape repairs over branch forcing when the dump stack clearly shows `return address -> scratch -> continuation`.
-5. Use delayed patching only for late-materialized pages and prearm those patches before input when timing matters.
+1. Recover the call site that invokes `FUN_1455d8b6f`.
+2. Recover how `param_3` is produced.
+3. Determine whether `param_3` is a compact selector, a length/state value, or an encoded pointer-sized state word.
+4. Re-run candidate testing only after the `param_3` producer is understood.
+5. Keep the late bypass chain documented, but treat it as fallback work rather than the front line.
 
 ## Concrete Technical Targets
 
-### 1. Repeated local loop family
+### 1. Decoder caller reconstruction
 
-Keep the 14-loop family patch as the baseline because it consistently removes the old reject/trap family and exposes the later anti-tamper path.
+Capture or infer the immediate caller that sets up:
 
-Key loop RVAs:
+- `RCX = decoder state struct`
+- `RDX = 0x2d958c5`
+- `R8  = param_3`
+- `R9  = out-param ptr`
 
-- `0x55d8d9d`
-- `0x55d8f1a`
-- `0x55d8fe7`
-- `0x55d91c3`
-- `0x55d9324`
-- `0x55d9537`
-- `0x55d9607`
-- `0x55d9789`
-- `0x55d989d`
-- `0x55d9a09`
-- `0x55d9b7b`
-- `0x55d9d14`
-- `0x55d9dbf`
-- `0x55d9f55`
+The goal is to identify where `R8/param_3` comes from.
 
-### 2. Reader/writer microblock
+### 2. Differential caller-state analysis
 
-The `C0000005` path is still useful because it exposes the reader/writer block:
+Continue comparing controlled inputs, but measure:
 
-- `0x55d9f14`
-- `0x55d9f27`
-- `0x55d9f40`
-- `0x55d9f4f`
+- `param_3`
+- caller-side return chain
+- caller-side stack frame
 
-This is the last coherent local state machine before the anti-tamper branch.
+instead of chasing the constant decoder output blob.
 
-### 3. Late anti-tamper trampolines
+### 3. Runtime range-table follow-up
 
-The old sink is no longer the end of the line.
+The runtime range table around `0x145ff7448` still matters because it maps the live block families around the decoder.
 
-Working late patches so far:
+Use it to group:
 
-- `0x1e0ae4c -> c3 90 90`
-- `0x1203bb4 -> 48 83 c4 08 c3`
-- `0x5a6c54a -> 66 31 c9 90`
-- `0x55efa2 -> c3`
-- `0x5898a23 -> c3`
-- `0x55da697 -> 48 83 c4 08 c3`
+- decoder block
+- immediate helper blocks
+- caller/continuation blocks
 
-Interpretation:
+without assuming the whole region is semantically meaningful.
 
-- the late bypass problem behaves like chained trampolines and state fixups
-- not like one final success/reject branch
-- each new crash is currently more useful than the old `DEADC0DE` route
+### 4. SHA256 table stays downgraded
 
-### 4. Password route remains secondary
-
-Password recovery remains secondary until a stable non-trap route exists.
+The runtime-only `salt + digest + SHA256 + keyauth_*` table stays as a historical clue, not as the primary password path, unless new evidence ties it back to the caller-state line.
 
 ## Short-Term Success Criteria
 
 The next pass should achieve at least one of these:
 
-- convert `crackme+0x446f267` into the next unwound continuation
-- identify the aligned start of the block that contains `0x446f267`
-- or reach a stable post-trampoline state that no longer ends in AV
+- identify the direct caller of `FUN_1455d8b6f`
+- recover the producer of `param_3`
+- or prove that `param_3` is derived from a fixed transform that can be inverted offline

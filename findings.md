@@ -14,6 +14,7 @@
 - Debugger attachment contaminates execution.
 - Frida-style aggressive instrumentation was not reliable for this sample.
 - Launching the process normally and injecting input through `CONIN$` is the cleanest reproducible dynamic method.
+- The active post-input path remains inside a single crackme thread in the `0x55d8xxx-0x55d9xxx` range for at least `2s`.
 
 ## Confirmed Hotspot Chains
 
@@ -246,6 +247,65 @@ Current interpretation:
 - the pre-exit branch exists and is live
 - but patching it alone does not dislodge the process from the same terminal caller
 - so it is not, by itself, the final select bit for acceptance vs trap
+
+## Password-Recovery Findings
+
+### Decoder semantics
+
+- `FUN_1455d8b6f` is confirmed as a range-decoder / LZMA-like routine.
+- Saved arguments recovered from live dumps show:
+  - `param_2 = crackme.exe + 0x2d958c5`
+  - `param_5 = crackme.exe + 0x11ec000`
+- `param_2` is constant across different passwords.
+- `param_5` is constant across different passwords.
+- The full decoded output region at `crackme.exe + 0x11ec000` is byte-for-byte identical across different passwords.
+
+Interpretation:
+
+- the password does not change the compressed payload
+- the password does not change the decoded output blob
+- therefore the decoder itself is not the password check
+
+### Decoder out-params
+
+- The saved `param_4` / `param_7` out-params do not hold a password buffer or digest.
+- In live dumps they resolve to metadata that includes:
+  - `KnownDlls\\ntdll.dll`
+
+Interpretation:
+
+- these outputs belong to a generic runtime subsystem
+- they are not the KDF result
+
+### Input-dependent state
+
+- The value that changes with the password is `param_3`.
+- Live samples have shown `param_3` values such as:
+  - `0x28`
+  - `0x30`
+  - `0x34`
+  - `0x48`
+  - `0x5c`
+
+Interpretation:
+
+- the password changes caller state fed into the decoder
+- the best current target is the caller that constructs `param_3`
+
+### SHA256 runtime table downgraded
+
+- The runtime-only `salt(16) + digest(32) + UTF-16 "SHA256" + keyauth_*` table is still present in memory.
+- It remains useful as a historical clue, but it is now downgraded as the main password hypothesis.
+- A focused `PBKDF2-HMAC-SHA256` sweep over strong runtime candidates, with:
+  - `ascii`
+  - `utf16le`
+  - iterations `1..2000`
+  produced `0` hits against the embedded 32-byte digest.
+
+Interpretation:
+
+- the obvious `SHA256` table is very likely a decoy or startup/runtime metadata
+- the intended password path is elsewhere
 
 ## Termination Suppression Finding
 
