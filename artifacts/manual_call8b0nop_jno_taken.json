@@ -1,0 +1,348 @@
+{
+  "pid": 33580,
+  "input": "test",
+  "base": "0x7ff74b2d0000",
+  "api_patches": {
+    "CheckRemoteDebuggerPresent": "0x7ff897685230",
+    "IsDebuggerPresent": "0x7ff89767d9a0",
+    "FindWindowW": "0x7ff8984d9ee0",
+    "NtRaiseHardError": "0x7ff8998a4910"
+  },
+  "patch_after_input": false,
+  "patches": [
+    {
+      "rva": "0x5b9494",
+      "bytes": "e97ef6feff"
+    },
+    {
+      "rva": "0x34f63",
+      "bytes": "e904531c0190"
+    },
+    {
+      "rva": "0x18d67fa",
+      "bytes": "9090909090"
+    },
+    {
+      "rva": "0x55d8d9d",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d8f1a",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d8fe7",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d91c3",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9324",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9537",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9607",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9789",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d989d",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9a09",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9b7b",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9d14",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9dbf",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9f55",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d8daf",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d8f2c",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d8ff4",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d91d5",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9336",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9544",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9619",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d979b",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d98af",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9a1b",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9b88",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9d21",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9dd1",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9f67",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d9f4f",
+      "bytes": "909090909090"
+    },
+    {
+      "rva": "0x55da8b0",
+      "bytes": "9090909090"
+    },
+    {
+      "rva": "0x55da8d9",
+      "bytes": "e9ee6a77fd90"
+    }
+  ],
+  "popup": null,
+  "matched_title": null,
+  "own_windows": [],
+  "global_windows": [
+    {
+      "hwnd": "0x30908",
+      "pid": 28260,
+      "class": "ThumbnailDeviceHelperWnd",
+      "text": ""
+    },
+    {
+      "hwnd": "0xa08b8",
+      "pid": 28260,
+      "class": "ThumbnailDeviceHelperWnd",
+      "text": ""
+    },
+    {
+      "hwnd": "0x1013a",
+      "pid": 28260,
+      "class": "Shell_TrayWnd",
+      "text": ""
+    },
+    {
+      "hwnd": "0x502a6",
+      "pid": 28260,
+      "class": "XamlExplorerHostIslandWindow_WASDK",
+      "text": ""
+    },
+    {
+      "hwnd": "0xcd0130",
+      "pid": 37184,
+      "class": "ConsoleWindowClass",
+      "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+    },
+    {
+      "hwnd": "0xab08fc",
+      "pid": 29604,
+      "class": "ConsoleWindowClass",
+      "text": "⠸ System32"
+    },
+    {
+      "hwnd": "0x3e09e0",
+      "pid": 31856,
+      "class": "Chrome_WidgetWin_1",
+      "text": "Latest crackmes - Helium"
+    },
+    {
+      "hwnd": "0x205c8",
+      "pid": 17948,
+      "class": "Chrome_WidgetWin_1",
+      "text": "#💬｜general | Crypto & Trading Education - Discord"
+    },
+    {
+      "hwnd": "0x670b3e",
+      "pid": 28260,
+      "class": "CabinetWClass",
+      "text": "Descargas - Explorador de archivos"
+    },
+    {
+      "hwnd": "0x80cba",
+      "pid": 28260,
+      "class": "ApplicationFrameWindow",
+      "text": ""
+    },
+    {
+      "hwnd": "0x240b62",
+      "pid": 21024,
+      "class": "ConsoleWindowClass",
+      "text": "Administrador: Windows PowerShell"
+    },
+    {
+      "hwnd": "0x66094e",
+      "pid": 10812,
+      "class": "Chrome_WidgetWin_1",
+      "text": "Claude"
+    },
+    {
+      "hwnd": "0x8008c8",
+      "pid": 40900,
+      "class": "SunAwtFrame",
+      "text": "CodeBrowser: crackme necrum:/crackme.exe"
+    },
+    {
+      "hwnd": "0x13408d4",
+      "pid": 28260,
+      "class": "CabinetWClass",
+      "text": "Papelera de reciclaje - Explorador de archivos"
+    },
+    {
+      "hwnd": "0x120a0c",
+      "pid": 28260,
+      "class": "CabinetWClass",
+      "text": "sample - Explorador de archivos"
+    },
+    {
+      "hwnd": "0x21e099c",
+      "pid": 40900,
+      "class": "SunAwtFrame",
+      "text": "Ghidra: crackme necrum"
+    },
+    {
+      "hwnd": "0x80c42",
+      "pid": 37796,
+      "class": "Windows.UI.Core.CoreWindow",
+      "text": "Seguridad de Windows"
+    },
+    {
+      "hwnd": "0x450a04",
+      "pid": 33032,
+      "class": "Windows.UI.Core.CoreWindow",
+      "text": "Configuración"
+    },
+    {
+      "hwnd": "0x700b4c",
+      "pid": 18296,
+      "class": "ApplicationFrameWindow",
+      "text": "Configuración"
+    },
+    {
+      "hwnd": "0x1081e",
+      "pid": 26772,
+      "class": "Windows.UI.Core.CoreWindow",
+      "text": "Xbox"
+    },
+    {
+      "hwnd": "0x107fc",
+      "pid": 18296,
+      "class": "ApplicationFrameWindow",
+      "text": "Xbox"
+    },
+    {
+      "hwnd": "0x100a22",
+      "pid": 28260,
+      "class": "EdgeUiInputTopWndClass",
+      "text": ""
+    },
+    {
+      "hwnd": "0x101c6",
+      "pid": 28260,
+      "class": "DummyDWMListenerWindow",
+      "text": ""
+    },
+    {
+      "hwnd": "0x10198",
+      "pid": 28260,
+      "class": "DummyDWMListenerWindow",
+      "text": ""
+    },
+    {
+      "hwnd": "0x10194",
+      "pid": 28260,
+      "class": "DummyDWMListenerWindow",
+      "text": ""
+    },
+    {
+      "hwnd": "0x10192",
+      "pid": 28260,
+      "class": "DummyDWMListenerWindow",
+      "text": ""
+    },
+    {
+      "hwnd": "0x10190",
+      "pid": 28260,
+      "class": "DummyDWMListenerWindow",
+      "text": ""
+    },
+    {
+      "hwnd": "0x301c8",
+      "pid": 29444,
+      "class": "Windows.UI.Core.CoreWindow",
+      "text": "Experiencia de entrada de Windows"
+    },
+    {
+      "hwnd": "0x900c0a",
+      "pid": 18296,
+      "class": "ApplicationFrameWindow",
+      "text": "Seguridad de Windows"
+    },
+    {
+      "hwnd": "0x4c070e",
+      "pid": 12520,
+      "class": "WinRarWindow",
+      "text": "Inaccesible: crackme.rar (Solo le quedan 13 días de prueba)"
+    },
+    {
+      "hwnd": "0x2050ba2",
+      "pid": 2288,
+      "class": "SDL_app",
+      "text": "miragcle"
+    },
+    {
+      "hwnd": "0x10162",
+      "pid": 28260,
+      "class": "Progman",
+      "text": "Program Manager"
+    }
+  ],
+  "exit_code": "0xc000001d"
+}

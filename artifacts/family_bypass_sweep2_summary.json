@@ -1,0 +1,219 @@
+{
+  "input": "test",
+  "results": [
+    {
+      "name": "family14_readzero_normal",
+      "noexit": false,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 32,
+      "file": "family14_readzero_normal.json",
+      "new_dumps": [
+        "crackme.exe.20000.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_noexit",
+      "noexit": true,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 32,
+      "file": "family14_readzero_noexit.json",
+      "new_dumps": [
+        "crackme.exe(1).25992.dmp",
+        "crackme.exe.25992.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_nopwrite_normal",
+      "noexit": false,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_readzero_nopwrite_normal.json",
+      "new_dumps": [
+        "crackme.exe.2376.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_nopwrite_noexit",
+      "noexit": true,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_readzero_nopwrite_noexit.json",
+      "new_dumps": [
+        "crackme.exe(1).40800.dmp",
+        "crackme.exe.40800.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_breakloop_normal",
+      "noexit": false,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_readzero_breakloop_normal.json",
+      "new_dumps": [
+        "crackme.exe.38760.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_breakloop_noexit",
+      "noexit": true,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_readzero_breakloop_noexit.json",
+      "new_dumps": [
+        "crackme.exe(1).39164.dmp",
+        "crackme.exe.39164.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_breakloop_nopwrite_normal",
+      "noexit": false,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 34,
+      "file": "family14_readzero_breakloop_nopwrite_normal.json",
+      "new_dumps": [
+        "crackme.exe.4920.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_breakloop_nopwrite_noexit",
+      "noexit": true,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 34,
+      "file": "family14_readzero_breakloop_nopwrite_noexit.json",
+      "new_dumps": [
+        "crackme.exe(1).29508.dmp",
+        "crackme.exe.29508.dmp"
+      ]
+    },
+    {
+      "name": "family14_breakloop_normal",
+      "noexit": false,
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 32,
+      "file": "family14_breakloop_normal.json",
+      "new_dumps": [
+        "crackme.exe.33104.dmp"
+      ]
+    },
+    {
+      "name": "family14_breakloop_noexit",
+      "noexit": true,
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 32,
+      "file": "family14_breakloop_noexit.json",
+      "new_dumps": [
+        "crackme.exe.33100.dmp"
+      ]
+    },
+    {
+      "name": "family14_breakloop_nopwrite_normal",
+      "noexit": false,
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_breakloop_nopwrite_normal.json",
+      "new_dumps": [
+        "crackme.exe.37380.dmp"
+      ]
+    },
+    {
+      "name": "family14_breakloop_nopwrite_noexit",
+      "noexit": true,
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_breakloop_nopwrite_noexit.json",
+      "new_dumps": [
+        "crackme.exe.15988.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_force_successret_normal",
+      "noexit": false,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_readzero_force_successret_normal.json",
+      "new_dumps": [
+        "crackme.exe.41088.dmp"
+      ]
+    },
+    {
+      "name": "family14_readzero_force_successret_noexit",
+      "noexit": true,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_readzero_force_successret_noexit.json",
+      "new_dumps": [
+        "crackme.exe(1).25480.dmp",
+        "crackme.exe.25480.dmp"
+      ]
+    },
+    {
+      "name": "family14_breakloop_force_successret_normal",
+      "noexit": false,
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_breakloop_force_successret_normal.json",
+      "new_dumps": [
+        "crackme.exe.19120.dmp"
+      ]
+    },
+    {
+      "name": "family14_breakloop_force_successret_noexit",
+      "noexit": true,
+      "exit_code": "0xc0000005",
+      "popup": null,
+      "matched_title": null,
+      "own_windows": [],
+      "patch_count": 33,
+      "file": "family14_breakloop_force_successret_noexit.json",
+      "new_dumps": [
+        "crackme.exe(1).41620.dmp",
+        "crackme.exe.41620.dmp"
+      ]
+    }
+  ]
+}

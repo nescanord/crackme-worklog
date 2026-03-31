@@ -2,85 +2,101 @@
 
 ## Immediate Priority
 
-Move one step above the exact `DEADC0DE` exit preparation instead of only suppressing UI or process termination.
+The main line is no longer the old `DEADC0DE` exit path.
 
-Why:
+The current highest-value path is:
 
-- `bruh` is now classified as a hard-error wrapper
-- `0xDEADC0DE` is the underlying trap result
-- WinDbg tied that trap to a concrete crackme-side exit caller:
-  - `crackme+0x5a3628a`
-- skipping that exact call only reveals a later null-execute crash, which proves it is terminal trap code, not the correct bypass point
+- family-wide patch over the repeated local loop family
+- new AV at `crackme+0x55d9f14`
+- and, once the loop is cut differently, an explicit trap at:
+  - `crackme+0x1e0ae4c = xabort 0xDC`
 
-That makes the pre-exit path above `0x5a3628a` the best current place to push forward.
+That means the active choke point has moved from the old hard-error exit into a later anti-tamper chain.
+
+## Confirmed Current Choke Points
+
+- `0x55d9f14`
+- `0x55d9f27`
+- `0x55d9f40`
+- `0x55d9f4f`
+- `0x55da8b5`
+- `0x1203bb4`
+- `0x1e0ae4c`
+
+Observed stack on the `C000001D` path:
+
+- `crackme+0x1e0ae4c`
+- `crackme+0x1203bb4`
+- `crackme+0x55da8b5`
 
 ## Recommended Work Order
 
-1. Walk upward from `crackme+0x5a3628a` and identify the last branch or selector that chooses the terminal `DEADC0DE` exit path.
-2. Keep using local spin-capture on the homologous exit loops to recover coherent state at:
-   - `0x55d9f55`
-   - `0x55d8fee`
-   - `0x55d9122`
-   - `0x55d90d7`
-3. Prefer rerouting pre-exit state rather than NOPing terminal exits.
-4. Keep selector patches delayed until after input when testing `R10`-side branches to avoid `Initialization error 2`.
+1. Stop spending time on `kernel32/ntdll` exits for the main line.
+2. Treat `0x1e0ae4c` as a trap sink and focus on the dispatch that reaches it.
+3. Use the repeated loop family patch as the reproducible base configuration.
+4. Walk upward from `0x55da8b5` and identify the selector that dispatches into `0x1203bb4 -> 0x1e0ae4c`.
+5. If needed, use delayed patching only for late-materialized pages, but keep the family loop patch early.
 
 ## Concrete Technical Targets
 
-### 1. Pre-exit trap selector
+### 1. Repeated local loop family
 
-Use dump-guided reversing around:
+Keep the 14-loop family patch as the baseline because it consistently removes the old reject/trap family and exposes the later anti-tamper path.
 
-- `crackme+0x5a3627f`
-- `crackme+0x5a3628a`
+Key loop RVAs:
 
-Goal:
-
-- identify the last coherent selector before the `DEADC0DE` exit is invoked
-- patch the selector, not the exit call itself
-
-### 2. Homologous local exit loops
-
-Attack the repeated local decoder/exit family rather than isolated one-off branches.
-
-Key areas:
-
+- `0x55d8d9d`
+- `0x55d8f1a`
+- `0x55d8fe7`
+- `0x55d91c3`
+- `0x55d9324`
+- `0x55d9537`
+- `0x55d9607`
+- `0x55d9789`
+- `0x55d989d`
+- `0x55d9a09`
+- `0x55d9b7b`
+- `0x55d9d14`
+- `0x55d9dbf`
 - `0x55d9f55`
-- `0x55d9f67`
-- `0x55d8fee`
-- `0x55d8ff4`
-- `0x55d9122`
-- `0x55d90d7`
 
-Goal:
+### 2. Reader/writer microblock
 
-- find the repeated condition that keeps assembling the exit trap
-- preserve a coherent live state all the way through those loops
+The `C0000005` path is still useful because it exposes the reader/writer block:
 
-### 3. Coherent selector production
+- `0x55d9f14`
+- `0x55d9f27`
+- `0x55d9f40`
+- `0x55d9f4f`
 
-Keep focusing on upstream state rather than only patching downstream branches.
+This is the last coherent local state machine before the anti-tamper branch.
 
-Best current state model:
+### 3. Late anti-tamper dispatch
 
-- `R10` feeds `R8`
-- `R8` feeds the late `ESI` gate
-- incoherent forcing causes reject, trap, or parked states
+The `C000001D` path shows a stable trap sink:
+
+- `0x55da8b5`
+- `0x1203bb4`
+- `0x1e0ae4c`
+
+Important finding:
+
+- direct patching of `0x55da8b0`
+- direct patching of `0x55da8d9`
+- and direct short-circuiting of `0x55da8b5`
+
+all still land in the same `xabort` sink.
+
+That strongly suggests the real selector is above `0x55da8b5`, not inside it.
 
 ### 4. Password route remains secondary
 
-Continue to treat direct password recovery as secondary until a stable non-trap route exists.
-
-Reason:
-
-- obvious semantic candidates already failed
-- visible compare and visible crypto APIs were downgraded
-- bypass is still closer than password recovery
+Password recovery remains secondary until a stable non-trap route exists.
 
 ## Short-Term Success Criteria
 
-The next pass should aim to achieve at least one of these:
+The next pass should achieve at least one of these:
 
-- a run that avoids both reject and `0xDEADC0DE` by changing pre-exit selection rather than suppressing `kernel32/ntdll`
-- a dump or live capture of the branch immediately above `crackme+0x5a3628a`
-- or a repeated local-loop condition that can be patched coherently across `0x55d9f55` and `0x55d8fee`
+- identify the caller or dispatch above `0x55da8b5` that selects `0x1203bb4`
+- land in a post-`family14` path that avoids both `C0000005` and `C000001D`
+- or capture the late-materialized page that backs `0x1e0ae4c` before the trap fires
