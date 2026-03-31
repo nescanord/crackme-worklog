@@ -14,6 +14,12 @@
 - `RDI` and `R8` remain stable state tables in the post-validation block.
 - `RAX`, `RBX`, and `RSI` are the most clearly input-dependent registers in the confirmed validation path.
 - The handler around `0x23e05cd` has at least one duplicated template elsewhere in the unpacked module.
+- The convergence pair `0x27dd114` and `0x2802257` is real and sits later in the same validation network.
+- The VM exit still collapses into two stable result families before transferring to `ntdll.dll`:
+  - `RAX=0x28`, `RBX=0`
+  - `RAX=0x2a`, `RBX=1`
+- `0x14755c736` is a direct caller into `0x147802244`.
+- `0x1477aa994 -> 0x14755c714 -> 0x147802244 -> ... -> 0x147901c6c -> 0x1475e525a` is part of the live late-stage chain.
 
 ## Runtime Observations
 
@@ -30,6 +36,10 @@
   - `0x23e05cd`
 - At `0x2cf67df`, captured runs so far still reach the `jne` with the failure-side condition in place; no tested candidate has diverged into a success-like path.
 - After the post-validation sequence, execution falls into system-side waiting behavior rather than terminating immediately.
+- Later in the same run, repeated convergence occurs around:
+  - `0x27dd114`
+  - `0x2802257`
+- Patching or forcing branches in that late cluster changes local hit counts but has not yet broken the wrong-password route cleanly.
 
 ## Disassembly Notes
 
@@ -40,6 +50,10 @@
 - `0x1473e05e7`: `xor esi, 0xe7a90182`
 - `0x1473e05f0`: `call 0x1474c3aa1`
 - `0x147cf67df`: `jne 0x147311abb`
+- `0x1477dd114`: `xor r8d, 0x6f9eaca4 ; call 0x1478d82bc ; jle 0x1477e8459`
+- `0x147853126`: `lea rsp, [rsp + 0x30] ; jne 0x1477aa994`
+- `0x1477aa994`: `movzx edx, byte ptr [rdi] ; call 0x14755c714 ; call 0x147901c6c ; ... ; call 0x1475e525a`
+- `0x1475e525f`: `jne 0x1475ba298`
 - There is another handler-like block around `0x14a7d171e` that reproduces the same `sar ...`, `inc r11`, `push 0x54bdce0b`, `xor esi, 0xe7a90182` pattern.
 
 ## Patch Behavior
@@ -50,6 +64,8 @@
 - NOPing the conditional branch at `0x2cf67df` does not crash immediately and diverts execution away from the normal `0x236fe1a` path.
 - Under the `0x2cf67df` branch patch, execution returns transiently to prompt-side offsets near `0x55d8ff7`, then still reaches rejection-side neighborhood later.
 - Naively skipping direct calls around `0x23e05cd` does not produce a clean bypass.
+- Forcing or skipping the `jle` at `0x1477dd120` does not prevent convergence through `0x27dd114 / 0x2802257`.
+- Forcing or skipping the `jne` at `0x14785312b` also fails to produce a clean bypass.
 
 ## Strings And Output
 
@@ -70,3 +86,5 @@ The strings `Wrong.`, `Detected.`, and `Enter password:` were not found plainly 
 - token strings near `auth_login_success` as direct passwords
 - standard `bcrypt` and CRT compare APIs as the primary active route
 - crude prompt-side call removal as a reliable bypass strategy
+- `0x1477dd120` as the terminal success-versus-rejection branch
+- `0x14785312b` as the terminal success-versus-rejection branch

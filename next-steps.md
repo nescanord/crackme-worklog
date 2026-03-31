@@ -1,7 +1,9 @@
 ﻿# Next Actions
 
-1. Follow the duplicated `0xe7a90182`-based handler template and determine where it converges with the `0x2cf67df` rejection path.
-2. Revisit `0x2cf67df` with more surgical branch manipulation instead of all-NOP forcing.
+1. Follow the late-stage chain `0x1477aa994 -> 0x14755c714 -> 0x147802244 -> 0x147901c6c -> 0x1475e525a`.
+2. Test the `jne` at `0x1475e525f` and determine whether it is closer to the real success-versus-rejection split.
 3. Keep using real-console execution plus `CONIN$` injection and `GetThreadContext` sampling as the primary dynamic workflow.
-4. Use Ghidra only for focused static pivots off the confirmed live offsets.
-5. If one of the post-validation nodes yields a recoverable comparison state or buffer, pivot back toward exact password recovery immediately.
+4. Use local dump disassembly for focused pivots instead of broad Ghidra sweeps over the VM.
+5. If one of the late-stage branches collapses to a stable success-state selector, pivot immediately to:
+   - a minimal bypass patch
+   - and an attempt to infer the expected final password-derived state

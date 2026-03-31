@@ -107,8 +107,24 @@ This made `0x2cf67df` one of the best current branch candidates for a future cle
   - `0x1474c3aa1`
 - A duplicated handler template containing the same `xor esi, 0xe7a90182` sequence was found elsewhere in the unpacked code.
 
+## Late Convergence Narrowing
+
+- The later convergence pair `0x27dd114` and `0x2802257` was confirmed as part of the same validation network.
+- The crackme-side VM collapses into two stable state families before dropping into `ntdll.dll`:
+  - `RAX=0x28`, `RBX=0`
+  - `RAX=0x2a`, `RBX=1`
+- `0x14755c736` was identified as a direct caller into `0x147802244`.
+- The branch at `0x1477dd120` looked promising but forcing or skipping it did not stop convergence through `0x27dd114 / 0x2802257`.
+- The next branch at `0x14785312b` also looked terminal at first, but forcing or skipping it likewise failed to produce a clean bypass.
+
 ## Current Posture
 
 - The password has not been recovered yet.
-- The route to a bypass is now constrained to a short list of live hotspots rather than broad VM speculation.
-- The most promising current targets are the duplicated `0xe7a90182` handler template and the branch neighborhood around `0x2cf67df`.
+- The route to a bypass is still narrow, but the terminal split appears deeper than the first two late-stage branch candidates.
+- The strongest current chain is:
+  - `0x1477aa994`
+  - `0x14755c714`
+  - `0x147802244`
+  - `0x147901c6c`
+  - `0x1475e525a`
+- The next branch to test is `0x1475e525f` and its target `0x1475ba298`.
