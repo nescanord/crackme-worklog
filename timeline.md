@@ -360,3 +360,116 @@ This clarified the trap structure:
 - the explicit exit call is real and terminal
 - but it is not the right bypass point
 - the stable bypass must divert before the trap is fully assembled
+
+## 31. `xabort` Was Converted Into A Real Return
+
+The first major breakthrough after the old trap line came from treating `crackme+0x1e0ae4c` as a sink, not a decision point.
+
+Late patch:
+
+- `0x1e0ae4c -> ret`
+
+This alone did not solve the sample, but it changed the nature of the failure and proved the analysis had moved past the original `xabort 0xDC` instruction.
+
+## 32. Stack Repair Above The Sink
+
+Dump inspection showed that the exception stack was not shaped for a direct return. The next slot above the sink was:
+
+- `crackme+0x1203bb4`
+
+followed by:
+
+- a scratch qword
+- then a plausible continuation in the module
+
+That led to the first stack-aware repair:
+
+- `0x1203bb4 -> add rsp, 8 ; ret`
+
+With:
+
+- `0x1e0ae4c -> ret`
+- `0x1203bb4 -> add rsp, 8 ; ret`
+
+the process no longer died in `C000001D`. The new crash moved forward to:
+
+- `crackme+0x5a6c54a`
+
+This was the clearest sign yet that the bypass path was being unwound, not just suppressed.
+
+## 33. Late Read Neutralization
+
+The new crash at `crackme+0x5a6c54a` came from:
+
+- `mov cx, word ptr [rbx]`
+
+inside a late materialized block.
+
+That read was patched to:
+
+- `xor cx, cx ; nop`
+
+The new result was not success, but another forward move in the chain:
+
+- AV at wild RIP `0x800000023`
+
+This showed that the bad read had been real and that execution had reached a later indirect target.
+
+## 34. First Trampoline Return
+
+The `0x800000023` case produced another useful dump. The stack and surrounding state pointed into:
+
+- `crackme+0x55efa2`
+
+This location sat inside another late stub. Replacing it with:
+
+- `ret`
+
+did not solve the sample but advanced the chain again.
+
+## 35. Second Trampoline Return
+
+The next useful continuation came from:
+
+- `crackme+0x5898a23`
+
+Replacing that stub with:
+
+- `ret`
+
+again shifted the failure forward instead of collapsing back into the old trap route.
+
+## 36. Stack Repair Repeats In The Chain
+
+The next dump showed another stack pattern matching the previous repair shape:
+
+- a continuation-like module address
+- a scratch qword
+- then another plausible module continuation
+
+That led to another stack-aware patch:
+
+- `0x55da697 -> add rsp, 8 ; ret`
+
+This is the point where the strategy became clear: the late anti-tamper system behaves as a chain of trampolines and stack fixups, not as a single branch gate.
+
+## 37. Latest Front Line
+
+After the trampoline sequence:
+
+- `0x1e0ae4c -> ret`
+- `0x1203bb4 -> add rsp, 8 ; ret`
+- `0x5a6c54a -> xor cx, cx ; nop`
+- `0x55efa2 -> ret`
+- `0x5898a23 -> ret`
+- `0x55da697 -> add rsp, 8 ; ret`
+
+the crash now lands back inside the crackme module at:
+
+- `crackme+0x446f267`
+
+This is the strongest current result:
+
+- the old `DEADC0DE` route is no longer the front line
+- `xabort` is no longer the front line
+- the problem is now a deeper late trampoline chain that can be unwound step by step

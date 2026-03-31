@@ -285,6 +285,56 @@ Interpretation:
 - the important divergence is now inside the narrowed `0x55d90xx` window
 - this is currently a better choke region than the broader VM network above it
 
+## Trampoline Unwinding Findings
+
+The newest productive line is not a single branch patch. It is a stack-aware unwinding of late anti-tamper trampolines.
+
+The critical discovery came from dump stack shape on the `xabort` path:
+
+- `crackme+0x1e0ae4c`
+- `crackme+0x1203bb4`
+- scratch qword
+- then a plausible continuation inside the module
+
+That made this patch coherent rather than arbitrary:
+
+- `0x1e0ae4c -> ret`
+- `0x1203bb4 -> add rsp, 8 ; ret`
+
+Effect:
+
+- the crash moved from `C000001D` at `xabort` to a new AV at `crackme+0x5a6c54a`
+
+Further productive late patches:
+
+- `0x5a6c54a -> xor cx, cx ; nop`
+- `0x55efa2 -> ret`
+- `0x5898a23 -> ret`
+- `0x55da697 -> add rsp, 8 ; ret`
+
+Observed progression:
+
+1. `crackme+0x1e0ae4c = xabort 0xDC`
+2. `crackme+0x5a6c54a`
+3. wild target `0x800000023`
+4. back into module code at `crackme+0x446f267`
+
+Interpretation:
+
+- the active bypass route is now a late chain of trampolines
+- each dump is exposing the next stub in the chain
+- this is stronger and more credible than the old idea of one final gate patch
+
+## Current Best Choke Points
+
+- `0x1e0ae4c`
+- `0x1203bb4`
+- `0x5a6c54a`
+- `0x55efa2`
+- `0x5898a23`
+- `0x55da697`
+- `0x446f267`
+
 ## Downgraded Or Discarded Leads
 
 - `.pwdprot` as the active password source

@@ -1,0 +1,197 @@
+{
+  "input": "test",
+  "results": [
+    {
+      "name": "a8aa_ret",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8aa",
+          "bytes": "c3",
+          "observed_before": "90"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x3c0c8a",
+          "pid": 15748,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_ret.json"
+    },
+    {
+      "name": "a8aa_xor_eax_ret",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8aa",
+          "bytes": "31c0c3",
+          "observed_before": "90e867"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x2980b30",
+          "pid": 38968,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_xor_eax_ret.json"
+    },
+    {
+      "name": "a8aa_mov1_ret",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8aa",
+          "bytes": "b801000000c3",
+          "observed_before": "90e867dc1dff"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x2990b30",
+          "pid": 16324,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_mov1_ret.json"
+    },
+    {
+      "name": "a8aa_nop_calls",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8ab",
+          "bytes": "9090909090",
+          "observed_before": "e867dc1dff"
+        },
+        {
+          "rva": "0x55da8b0",
+          "bytes": "9090909090",
+          "observed_before": "e8a7bde8fe"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x29a0b30",
+          "pid": 36916,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_nop_calls.json"
+    },
+    {
+      "name": "a8aa_skip_jno",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8d9",
+          "bytes": "909090909090",
+          "observed_before": "0f81ed6a77fd"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [],
+      "file": "a8aa_skip_jno.json"
+    },
+    {
+      "name": "a8aa_force_jno",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8d9",
+          "bytes": "e9ed6a77fd90",
+          "observed_before": "0f81ed6a77fd"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x29c0b30",
+          "pid": 26204,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_force_jno.json"
+    },
+    {
+      "name": "a8aa_ret_and_xabort_ret",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8aa",
+          "bytes": "31c0c3",
+          "observed_before": "90e867"
+        },
+        {
+          "rva": "0x1e0ae4c",
+          "bytes": "c39090",
+          "observed_before": "c63bdc"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x29d0b30",
+          "pid": 23072,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_ret_and_xabort_ret.json"
+    },
+    {
+      "name": "a8aa_ret_and_xabort_spin",
+      "exit_code": "0xc000001d",
+      "popup": null,
+      "matched_title": null,
+      "late_patches": [
+        {
+          "rva": "0x55da8aa",
+          "bytes": "31c0c3",
+          "observed_before": "90e867"
+        },
+        {
+          "rva": "0x1e0ae4c",
+          "bytes": "ebfe90",
+          "observed_before": "c63bdc"
+        }
+      ],
+      "late_pending": [],
+      "own_windows": [
+        {
+          "hwnd": "0x29e0b30",
+          "pid": 41392,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ],
+      "file": "a8aa_ret_and_xabort_spin.json"
+    }
+  ]
+}

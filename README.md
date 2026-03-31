@@ -28,12 +28,13 @@ That workflow recovered:
 - a reproducible post-validation chain
 - a narrower late-state selector centered on `R10 -> R8 -> ESI`
 - and a classified trap path whose UI appears as the `bruh` popup
+- and, more recently, a late anti-tamper trampoline chain that can be unwound step by step
 
 ## Current Assessment
 
-- Overall progress: `85%`
-- Stable bypass probability: `79%`
-- Exact password recovery probability: `40%`
+- Overall progress: `84%`
+- Stable bypass probability: `86%`
+- Exact password recovery probability: `36%`
 
 ## Confirmed Runtime Chains
 
@@ -144,9 +145,23 @@ This is currently the highest-signal local choke window in the whole crackme.
 
 ## Current Direction
 
-The problem is no longer broad exploration. The remaining work is concentrated around:
+The problem is no longer broad exploration. The active line is now a late-stage anti-tamper chain that sits beyond the old `DEADC0DE` hard-error route.
 
-- coherent `R10`-side state production
-- avoiding the `0xDEADC0DE` trap rather than merely silencing its UI
-- following the live `crackme | reezli.vc` state toward a stable bypass
-- and splitting the two trap outcomes inside the narrowed `0x55d90xx` block
+The best current idea is not "patch one final jump" but "unwind the trampoline chain coherently":
+
+- `0x1e0ae4c -> ret`
+- `0x1203bb4 -> add rsp, 8 ; ret`
+- `0x5a6c54a -> xor cx, cx ; nop`
+- `0x55efa2 -> ret`
+- `0x5898a23 -> ret`
+
+That sequence does not solve the crackme yet, but it moves execution forward through multiple trap layers and brings control back into live module code instead of dying in the original sink.
+
+Latest observed progression:
+
+- original late sink: `crackme+0x1e0ae4c = xabort 0xDC`
+- after stack repair: AV at `crackme+0x5a6c54a`
+- after read neutralization: AV at wild target `0x800000023`
+- after unwinding another stub: AV inside the module at `crackme+0x446f267`
+
+This is the strongest evidence so far that the bypass path is a chain of late dispatch trampolines rather than a single acceptance branch.

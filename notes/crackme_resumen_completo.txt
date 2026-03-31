@@ -6,29 +6,40 @@ Este resumen corto se deriva de la memoria canonica y del repo.
 Estado actual
 -------------
 - la fuente de verdad es el repo `crackme-worklog`, no las memorias manuales aisladas
-- la linea mas nueva ya no es solo `R10 -> R8 -> ESI`; ahora incluye la rama `family14` y la trampa `xabort`
+- la linea mas nueva ya no es solo `R10 -> R8 -> ESI`; ahora incluye la rama `family14`, la trampa `xabort` y una cadena de trampolines tardios
 - choke points actuales mas utiles:
-  - `0x55d9f14`
-  - `0x55da8b5`
-  - `0x1203bb4`
   - `0x1e0ae4c`
+  - `0x1203bb4`
+  - `0x5a6c54a`
+  - `0x55efa2`
+  - `0x5898a23`
+  - `0x55da697`
+  - `0x446f267`
 
 Hallazgo mas reciente
 ---------------------
-- la ruta mas avanzada y repetible termina en `crackme+0x1e0ae4c = xabort 0xDC`
-- la pila estable observada es:
+- la ruta mas avanzada ya no muere en `xabort`; ahora se desenrolla una cadena de trampolines tardios
+- parches tardios productivos hasta ahora:
+  - `0x1e0ae4c -> ret`
+  - `0x1203bb4 -> add rsp, 8 ; ret`
+  - `0x5a6c54a -> xor cx, cx ; nop`
+  - `0x55efa2 -> ret`
+  - `0x5898a23 -> ret`
+  - `0x55da697 -> add rsp, 8 ; ret`
+- la progresion de fallos observada es:
   - `crackme+0x1e0ae4c`
-  - `crackme+0x1203bb4`
-  - `crackme+0x55da8b5`
-- parchear `0x55da8b5`, `0x55da8b0` o `0x55da8d9` no evita ese sink
+  - `crackme+0x5a6c54a`
+  - `0x800000023`
+  - `crackme+0x446f267`
 
 Implicacion
 -----------
-- el selector real esta por encima de `0x55da8b5`
+- el bypass actual parece una cadena de trampolines, no un unico branch final
 - el bypass sigue pareciendo mas cercano que la password exacta
 
 Commits recientes
 -----------------
+0c02e98 Add canonical context sync automation
 85280e7 Record family14 xabort trap follow-up
 97c1398 Record pre-exit branch results
 7e6bd59 Add dump-driven exit trap analysis
@@ -36,7 +47,6 @@ a2447db Add trap probes and latest 55d90xx analysis
 7c86341 Rewrite full NecrumWin context and current trap analysis
 332adf1 Add scripts and update R10 selector analysis
 e0230e0 Rewrite NecrumWin worklog as full reverse-engineering report
-81650ed Update NecrumWin late-stage target analysis
 
 Siguiente paso
 --------------
@@ -44,16 +54,15 @@ Siguiente paso
 
 ## Immediate Priority
 
-The main line is no longer the old `DEADC0DE` exit path.
+The main line is no longer the old `DEADC0DE` exit path and not even just `xabort`.
 
-The current highest-value path is:
+The active line is now:
 
 - family-wide patch over the repeated local loop family
-- new AV at `crackme+0x55d9f14`
-- and, once the loop is cut differently, an explicit trap at:
-  - `crackme+0x1e0ae4c = xabort 0xDC`
+- stack-aware bypass of the `xabort` sink
+- and progressive unwinding of the late trampoline chain after that sink
 
-That means the active choke point has moved from the old hard-error exit into a later anti-tamper chain.
+That means the active choke point has moved again, from the hard-error trap into a deeper late dispatcher sequence.
 
 ## Confirmed Current Choke Points
 
@@ -61,23 +70,36 @@ That means the active choke point has moved from the old hard-error exit into a 
 - `0x55d9f27`
 - `0x55d9f40`
 - `0x55d9f4f`
-- `0x55da8b5`
-- `0x1203bb4`
 - `0x1e0ae4c`
+- `0x1203bb4`
+- `0x5a6c54a`
+- `0x55efa2`
+- `0x5898a23`
+- `0x55da697`
+- `0x446f267`
 
-Observed stack on the `C000001D` path:
+Observed stack on the original `C000001D` path:
 
 - `crackme+0x1e0ae4c`
 - `crackme+0x1203bb4`
 - `crackme+0x55da8b5`
 
+Observed progression after stack-aware late patches:
+
+- `crackme+0x1e0ae4c`
+- `crackme+0x5a6c54a`
+- `0x800000023`
+- `crackme+0x446f267`
+
 ## Recommended Work Order
 
-1. Stop spending time on `kernel32/ntdll` exits for the main line.
-2. Treat `0x1e0ae4c` as a trap sink and focus on the dispatch that reaches it.
-3. Use the repeated loop family patch as the reproducible base configuration.
-4. Walk upward from `0x55da8b5` and identify the selector that dispatches into `0x1203bb4 -> 0x1e0ae4c`.
-5. If needed, use delayed patching only for late-materialized pages, but keep the family loop patch early.
+1. Keep the repeated loop family patch as the reproducible base configuration.
+2. Keep the late patch pair that successfully crosses the old sink:
+   - `0x1e0ae4c -> ret`
+   - `0x1203bb4 -> add rsp, 8 ; ret`
+3. Treat every new AV as the next trampoline to unwind, not as a reason to fall back to the old trap line.
+4. Prioritize continuation-shape repairs over branch forcing when the dump stack clearly shows `return address -> scratch -> continuation`.
+5. Use delayed patching only for late-materialized pages and prearm those patches before input when timing matters.
 
 ## Concrete Technical Targets
 
@@ -113,23 +135,24 @@ The `C0000005` path is still useful because it exposes the reader/writer block:
 
 This is the last coherent local state machine before the anti-tamper branch.
 
-### 3. Late anti-tamper dispatch
+### 3. Late anti-tamper trampolines
 
-The `C000001D` path shows a stable trap sink:
+The old sink is no longer the end of the line.
 
-- `0x55da8b5`
-- `0x1203bb4`
-- `0x1e0ae4c`
+Working late patches so far:
 
-Important finding:
+- `0x1e0ae4c -> c3 90 90`
+- `0x1203bb4 -> 48 83 c4 08 c3`
+- `0x5a6c54a -> 66 31 c9 90`
+- `0x55efa2 -> c3`
+- `0x5898a23 -> c3`
+- `0x55da697 -> 48 83 c4 08 c3`
 
-- direct patching of `0x55da8b0`
-- direct patching of `0x55da8d9`
-- and direct short-circuiting of `0x55da8b5`
+Interpretation:
 
-all still land in the same `xabort` sink.
-
-That strongly suggests the real selector is above `0x55da8b5`, not inside it.
+- the late bypass problem behaves like chained trampolines and state fixups
+- not like one final success/reject branch
+- each new crash is currently more useful than the old `DEADC0DE` route
 
 ### 4. Password route remains secondary
 
@@ -139,9 +162,9 @@ Password recovery remains secondary until a stable non-trap route exists.
 
 The next pass should achieve at least one of these:
 
-- identify the caller or dispatch above `0x55da8b5` that selects `0x1203bb4`
-- land in a post-`family14` path that avoids both `C0000005` and `C000001D`
-- or capture the late-materialized page that backs `0x1e0ae4c` before the trap fires
+- convert `crackme+0x446f267` into the next unwound continuation
+- identify the aligned start of the block that contains `0x446f267`
+- or reach a stable post-trampoline state that no longer ends in AV
 
 Referencia
 ----------
