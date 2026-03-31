@@ -1,0 +1,42 @@
+{
+  "results": [
+    {
+      "input": "test",
+      "pid": 14112,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        },
+        {
+          "rva": "0x55d9f55",
+          "bytes": "4531c090909090"
+        },
+        {
+          "rva": "0x55d9f67",
+          "bytes": "4d39ed"
+        },
+        {
+          "rva": "0x55d8fee",
+          "bytes": "909090909090"
+        },
+        {
+          "rva": "0x55d8ff4",
+          "bytes": "4d39ed"
+        }
+      ],
+      "top": [],
+      "exit_code": "0x80000003"
+    }
+  ]
+}

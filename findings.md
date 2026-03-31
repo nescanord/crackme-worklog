@@ -157,6 +157,78 @@ Meaning:
 - `bruh` = hard-error presentation
 - `0xDEADC0DE` = underlying trap result
 
+## Local Exit-Gate Findings
+
+Recent spin-capture and local branch work narrowed the trap family further.
+
+Live captures at:
+
+- `0x55d9f55`
+- `0x55d9122`
+- `0x55d90d7`
+
+showed that the trap route is not random at this stage; it carries concrete state through:
+
+- `R8D`
+- `R9`
+- `R13`
+- `R10D`
+- `R14`
+
+Key observations:
+
+- under the strongest local patch family, `0x55d9f55` converges to the same state across multiple inputs
+- the practical local bypass condition is not "guess the password here"
+- it is "force a coherent decoder/exit state"
+
+The strongest local patch family currently under study is:
+
+- `0x55d9f55 -> 45 31 c0 90 90 90 90`
+- `0x55d9f67 -> 4d 39 ed`
+- `0x55d8fee -> 90 90 90 90 90 90`
+- `0x55d8ff4 -> 4d 39 ed`
+
+Interpretation:
+
+- there are multiple homologous local decoder/exit loops
+- patching only one loop is not enough
+- the trap is being reached through a repeated family, not a single isolated branch
+
+## Dump-Based Trap Confirmation
+
+Windows Error Reporting local dumps and WinDbg were added to the workflow.
+
+This produced two useful ground truths:
+
+1. The `0x80000003` route under termination suppression is not the main secret path.
+   It comes from a trap family that eventually reaches:
+   - `kernel32!ExitProcessImplementation+0x10`
+   - with `RCX = 0xDEADC0DE`
+
+2. The concrete crackme-side caller identified from the dump is:
+   - `crackme+0x5a3628a`
+
+Meaning:
+
+- the sample really does call an exit path with `DEADC0DE`
+- this is not merely a UI artifact from the `bruh` popup
+- the trap has now been tied to an exact crackme-side call site
+
+## Post-Exit-Call Finding
+
+Skipping the exact `call rax` at `crackme+0x5a3628a` does not solve the crackme.
+
+What it does:
+
+- removes the immediate `DEADC0DE` termination path
+- reveals a later `0xC0000005` execute-at-null crash
+
+Interpretation:
+
+- the explicit exit call is real and terminal
+- but it sits at the end of a trap path, not at a clean bypass point
+- any stable bypass needs to divert before that terminal exit is prepared
+
 ## Termination Suppression Finding
 
 When these are neutralized together:
@@ -209,3 +281,4 @@ Interpretation:
 
 - Bypass remains closer than exact-password recovery
 - The remaining problem is concentrated around coherent `R10`-side state production and trap avoidance
+- The newest concrete choke point above the terminal trap is the crackme-side path leading into `crackme+0x5a3628a`

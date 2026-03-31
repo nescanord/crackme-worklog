@@ -1,0 +1,150 @@
+{
+  "target": "0x55d9122",
+  "results": [
+    {
+      "input": "test",
+      "pid": 31552,
+      "tid": 41088,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x55d9122",
+      "target_va": "0x7ff7508a9122",
+      "api_patches": {},
+      "patch_after_input": false,
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        },
+        {
+          "rva": "0x55d9f55",
+          "bytes": "4531c090909090"
+        },
+        {
+          "rva": "0x55d9f67",
+          "bytes": "4d39ed"
+        }
+      ],
+      "original_bytes": "4181fa00010000e9",
+      "context": {
+        "rip": "0x7ff7508a9122",
+        "rax": "0x28",
+        "rbx": "0x204c573155c",
+        "rcx": "0x4dc",
+        "rdx": "0xb",
+        "rsp": "0xf663d7f1d0",
+        "rbp": "0x0",
+        "rsi": "0x0",
+        "rdi": "0x4d3241",
+        "r8": "0x18e6a32",
+        "r9": "0x7ff74fb4ce8a",
+        "r10": "0x17",
+        "r11": "0xe4",
+        "r12": "0x10",
+        "r13": "0x7ff74fb11345",
+        "r14": "0x51df0",
+        "r15": "0x204c572dcf0",
+        "eflags": "0x207"
+      },
+      "stack_80": "080000002000000003000000000000000300000000000000c350734ff77f000000000000000000002001000000000000010000000000000000002d4bf77f00000000000000000000177297b100000000c350734ff77f000090f2d763f600000018000000000000008ea88a50f77f000040000000040200004613b14ff77f0000"
+    },
+    {
+      "input": "auth_login_success",
+      "pid": 21668,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x55d9122",
+      "target_va": "0x7ff7508a9122",
+      "api_patches": {},
+      "patch_after_input": false,
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        },
+        {
+          "rva": "0x55d9f55",
+          "bytes": "4531c090909090"
+        },
+        {
+          "rva": "0x55d9f67",
+          "bytes": "4d39ed"
+        }
+      ],
+      "original_bytes": "4181fa00010000e9",
+      "context": null,
+      "exit_code": "0xdeadc0de"
+    },
+    {
+      "input": "aaaa",
+      "pid": 39524,
+      "tid": 27032,
+      "base": "0x7ff74b2d0000",
+      "size": "0x5ffa000",
+      "target_rva": "0x55d9122",
+      "target_va": "0x7ff7508a9122",
+      "api_patches": {},
+      "patch_after_input": false,
+      "patches": [
+        {
+          "rva": "0x5b9494",
+          "bytes": "e97ef6feff"
+        },
+        {
+          "rva": "0x34f63",
+          "bytes": "e904531c0190"
+        },
+        {
+          "rva": "0x18d67fa",
+          "bytes": "9090909090"
+        },
+        {
+          "rva": "0x55d9f55",
+          "bytes": "4531c090909090"
+        },
+        {
+          "rva": "0x55d9f67",
+          "bytes": "4d39ed"
+        }
+      ],
+      "original_bytes": "4181fa00010000e9",
+      "context": {
+        "rip": "0x7ff7508a9122",
+        "rax": "0x42a",
+        "rbx": "0x1e5734ad7bc",
+        "rcx": "0x40b",
+        "rdx": "0x10",
+        "rsp": "0x2d49f3f090",
+        "rbp": "0x0",
+        "rsi": "0x3",
+        "rdi": "0xc36d9fd",
+        "r8": "0x4d5025f1",
+        "r9": "0x7ff74fb7c847",
+        "r10": "0x20",
+        "r11": "0x6c",
+        "r12": "0xa44",
+        "r13": "0x7ff74fb11345",
+        "r14": "0x8568f",
+        "r15": "0x1e5734ab750",
+        "eflags": "0x202"
+      },
+      "stack_80": "070000002400000003000000000000000300000000000000c350734ff77f000000000000000000002001000000000000010000000000000000002d4bf77f00000000000000000000177297b100000000c350734ff77f000050f1f3492d00000018000000000000008ea88a50f77f00004c0d0000e50100004613b14ff77f0000"
+    }
+  ]
+}

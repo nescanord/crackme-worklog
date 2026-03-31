@@ -1,0 +1,74 @@
+{
+  "base": "0x7ff74b2d0000",
+  "size": "0x5ffa000",
+  "api_patches": {
+    "CheckRemoteDebuggerPresent": "0x7ff897685230",
+    "IsDebuggerPresent": "0x7ff89767d9a0",
+    "FindWindowW": "0x7ff8984d9ee0",
+    "NtRaiseHardError": "0x7ff8998a4910",
+    "NtTerminateProcess": "0x7ff8998a2000",
+    "RtlExitUserProcess": "0x7ff8997cc530",
+    "DbgBreakPoint": "0x7ff899860c80"
+  },
+  "patches": [
+    {
+      "rva": "0x5b9494",
+      "bytes": "e97ef6feff"
+    },
+    {
+      "rva": "0x34f63",
+      "bytes": "e904531c0190"
+    },
+    {
+      "rva": "0x18d67fa",
+      "bytes": "9090909090"
+    },
+    {
+      "rva": "0x55d9f55",
+      "bytes": "4531c090909090"
+    },
+    {
+      "rva": "0x55d9f67",
+      "bytes": "4d39ed"
+    },
+    {
+      "rva": "0x55d8fee",
+      "bytes": "909090909090"
+    },
+    {
+      "rva": "0x55d8ff4",
+      "bytes": "4d39ed"
+    }
+  ],
+  "samples": [
+    {
+      "t": 0.0,
+      "exit_code": "0x103",
+      "windows": [
+        {
+          "hwnd": "0x5d0c68",
+          "pid": 41908,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ]
+    },
+    {
+      "t": 0.01,
+      "exit_code": "0x103",
+      "windows": [
+        {
+          "hwnd": "0x5d0c68",
+          "pid": 41908,
+          "class": "ConsoleWindowClass",
+          "text": "C:\\Users\\nesca\\Desktop\\NecrumWin-Reezli\\sample\\crackme.exe"
+        }
+      ]
+    },
+    {
+      "t": 0.02,
+      "exit_code": "0x80000003",
+      "windows": []
+    }
+  ]
+}

@@ -2,53 +2,60 @@
 
 ## Immediate Priority
 
-Turn the known trap route into a useful live path instead of merely silencing its UI.
+Move one step above the exact `DEADC0DE` exit preparation instead of only suppressing UI or process termination.
 
 Why:
 
 - `bruh` is now classified as a hard-error wrapper
 - `0xDEADC0DE` is the underlying trap result
-- suppressing `NtRaiseHardError` alone only removes the popup
-- suppressing termination as well keeps the process alive and yields `crackme | reezli.vc`
+- WinDbg tied that trap to a concrete crackme-side exit caller:
+  - `crackme+0x5a3628a`
+- skipping that exact call only reveals a later null-execute crash, which proves it is terminal trap code, not the correct bypass point
 
-That makes the trap path the cleanest current place to push forward.
+That makes the pre-exit path above `0x5a3628a` the best current place to push forward.
 
 ## Recommended Work Order
 
-1. Follow the live `crackme | reezli.vc` state after hard-error and termination suppression.
-2. Identify where that state parks or loops once the trap cannot complete.
-3. Move one step upward from the trap exit and patch the trap-selection logic, not the OS-facing hard-error APIs.
+1. Walk upward from `crackme+0x5a3628a` and identify the last branch or selector that chooses the terminal `DEADC0DE` exit path.
+2. Keep using local spin-capture on the homologous exit loops to recover coherent state at:
+   - `0x55d9f55`
+   - `0x55d8fee`
+   - `0x55d9122`
+   - `0x55d90d7`
+3. Prefer rerouting pre-exit state rather than NOPing terminal exits.
 4. Keep selector patches delayed until after input when testing `R10`-side branches to avoid `Initialization error 2`.
 
 ## Concrete Technical Targets
 
-### 1. Trap-to-live transition
+### 1. Pre-exit trap selector
 
-Use the popup-context probe and thread snapshots to identify the exact module RVA where the trap-producing route remains alive after:
+Use dump-guided reversing around:
 
-- `NtRaiseHardError -> ret`
-- `NtTerminateProcess -> ret`
-- `RtlExitUserProcess -> ret`
-
-Primary clue:
-
-- console title changes to `crackme | reezli.vc`
-
-### 2. Upstream trap selection
-
-Attack the route above the hard-error instead of the hard-error itself.
-
-Key areas:
-
-- `0x55d905a`
-- `0x55d9103`
-- the surrounding prompt/decoder block
-- the late `R10 -> R8 -> ESI` selector chain
+- `crackme+0x5a3627f`
+- `crackme+0x5a3628a`
 
 Goal:
 
-- avoid entering the trap route at all
-- preserve a coherent live state
+- identify the last coherent selector before the `DEADC0DE` exit is invoked
+- patch the selector, not the exit call itself
+
+### 2. Homologous local exit loops
+
+Attack the repeated local decoder/exit family rather than isolated one-off branches.
+
+Key areas:
+
+- `0x55d9f55`
+- `0x55d9f67`
+- `0x55d8fee`
+- `0x55d8ff4`
+- `0x55d9122`
+- `0x55d90d7`
+
+Goal:
+
+- find the repeated condition that keeps assembling the exit trap
+- preserve a coherent live state all the way through those loops
 
 ### 3. Coherent selector production
 
@@ -74,6 +81,6 @@ Reason:
 
 The next pass should aim to achieve at least one of these:
 
-- a run that avoids both reject and `0xDEADC0DE` without external API suppression
-- a stable parked state deeper than `crackme | reezli.vc`
-- or a patch point above the trap that changes outcome without causing `Initialization error 2`
+- a run that avoids both reject and `0xDEADC0DE` by changing pre-exit selection rather than suppressing `kernel32/ntdll`
+- a dump or live capture of the branch immediately above `crackme+0x5a3628a`
+- or a repeated local-loop condition that can be patched coherently across `0x55d9f55` and `0x55d8fee`

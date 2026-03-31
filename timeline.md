@@ -278,3 +278,85 @@ The project is now concentrated around:
 - analysis of the live `crackme | reezli.vc` state
 
 The crackme remains unresolved, but the search space has collapsed from the whole module to a small late-state selector and its trap-handling logic.
+
+## 25. Local Exit Family Compressed Further
+
+Additional profiling and branch forcing reduced the active trap family to a repeated local decoder/exit pattern around:
+
+- `0x55d9f55`
+- `0x55d9f67`
+- `0x55d8fee`
+- `0x55d8ff4`
+- `0x55d9122`
+- `0x55d90d7`
+
+The important insight here was that the trap was not controlled by one isolated branch. Multiple homologous loops feed the same terminal trap behavior.
+
+## 26. Spin-Capture Tool Added
+
+`crackme_spin_gate_capture.py` was added to freeze execution at narrow RVAs and dump live registers without using a classic debugger.
+
+This produced direct captures at:
+
+- `0x55d9f55`
+- `0x55d9122`
+- `0x55d90d7`
+
+and showed that the local exit family carries real state through:
+
+- `R8D`
+- `R9`
+- `R13`
+- `R10D`
+- `R14`
+
+## 27. Stronger Local Exit Rewrites
+
+A stronger local patch family was tested:
+
+- `0x55d9f55 -> 45 31 c0 90 90 90 90`
+- `0x55d9f67 -> 4d 39 ed`
+- `0x55d8fee -> 90 90 90 90 90 90`
+- `0x55d8ff4 -> 4d 39 ed`
+
+This did not solve the crackme, but it materially improved classification:
+
+- the ordinary `DEADC0DE` route could be displaced
+- the next visible outcome became `0x80000003`
+
+That proved the project had moved one layer deeper into the trap chain.
+
+## 28. WinDbg And Local Dumps Added
+
+To stop guessing about the new `0x80000003` path, Windows Error Reporting LocalDumps were configured and WinDbg was installed.
+
+This created a non-attach workflow for inspecting the actual terminal exception path.
+
+## 29. Exact `DEADC0DE` Exit Caller Recovered
+
+The first useful dump showed that the `0x80000003` route still reaches:
+
+- `kernel32!ExitProcessImplementation+0x10`
+
+with:
+
+- `RCX = 0xDEADC0DE`
+
+and that the immediate crackme-side caller is:
+
+- `crackme+0x5a3628a`
+
+This was the first exact crackme-side call site tying the trap to a concrete exit path.
+
+## 30. Skipping The Exact Exit Call Was Tested
+
+NOPing the exact `call rax` at `crackme+0x5a3628a` removed the immediate `DEADC0DE` termination, but the process then crashed with:
+
+- `0xC0000005`
+- execute at null
+
+This clarified the trap structure:
+
+- the explicit exit call is real and terminal
+- but it is not the right bypass point
+- the stable bypass must divert before the trap is fully assembled
