@@ -1,19 +1,23 @@
-﻿# Findings
+# Findings
+
+## Confirmed Sample Facts
+
+- Target: `NecrumWin (Reezli challenge)`
+- Platform: Windows x64
+- Validation is client-side
+- The active sample matches the published challenge hashes
 
 ## Confirmed Runtime Facts
 
-- The active visible validation route is not driven by `strcmp`, `memcmp`, `strncmp`, `wcscmp`, or the obvious `bcrypt.dll` exports.
-- Debugger attachment contaminates execution and can trigger alternate behavior or detection.
-- The crackme can be driven reproducibly without a debugger by launching it in a real console and writing keyboard events into `CONIN$`.
-- The prompt-side active range is approximately `0x1455da9fd..0x145fe7abc`.
-- The post-validation active range is approximately `0x142310f49..0x142d1e00e`.
-- `FUN_1455d8b6f` is a real decoder/decompression component in the prompt-side path.
+- The active visible validation route is not controlled by `strcmp`, `memcmp`, `strncmp`, or `wcscmp`.
+- The obvious exported `bcrypt.dll` surface does not line up with the visible live validation route.
+- Debugger attachment contaminates execution.
+- Frida-style aggressive instrumentation was not reliable for this sample.
+- Launching the process normally and injecting input through `CONIN$` is the cleanest reproducible dynamic method.
 
 ## Confirmed Hotspot Chains
 
-### Prompt Side
-
-Observed repeatedly in clean runs:
+### Prompt side
 
 - `0x55d9c83`
 - `0x55d9c1c`
@@ -21,29 +25,25 @@ Observed repeatedly in clean runs:
 - `0x5d24729`
 - `0x5d2473f`
 
-### Post-Validation Side
-
-Observed repeatedly in clean runs:
+### Post-validation side
 
 - `0x2cf67df`
 - `0x236fe1a`
 - `0x23e05cd`
 
-### Later Convergence
-
-Observed repeatedly in the same validation network:
+### Later convergence
 
 - `0x27dd114`
 - `0x2802257`
 
 ## Register-State Findings
 
-Stable or semi-stable in the post-validation path:
+Stable or semi-stable:
 
 - `RCX = 0x3791ca2a`
 - `RDX = 0x20000`
-- `RDI` behaves like a persistent state/table pointer
-- `R8` behaves like a persistent support pointer/table
+- `RDI` behaves like a persistent state object or table pointer
+- `R8` behaves like a persistent support/state pointer
 
 Most input-dependent:
 
@@ -53,23 +53,11 @@ Most input-dependent:
 
 Interpretation:
 
-- the crackme is carrying a derived late-stage state,
-- not simply comparing the input to a plaintext constant.
+- the crackme carries a derived internal state rather than a plaintext compare buffer
 
-## RBX Behavior
+## Late-State Network
 
-`RBX` changes strongly even for very similar inputs.
-
-This was confirmed with clustered traces such as:
-
-- `aaaa / aaab / aaac / aaad`
-- `aaaa / aaaab / aaaac / aaaad`
-
-The differences do not look like a tiny incremental counter or shallow state machine. `RBX` looks like a heavily mixed late-stage state, close to a digest or strongly transformed result.
-
-## Late-Stage Control Network
-
-The strongest confirmed late chain is:
+Useful late chain:
 
 - `0x1475ba2e2`
 - `0x1475b9460`
@@ -77,135 +65,125 @@ The strongest confirmed late chain is:
 - `0x1475a3b17`
 - `0x145034f48`
 
-Important notes:
+Notes:
 
-- `cmp ebx, 1` appears in this region and is meaningful, but patching it alone does not unlock the sample.
-- Forcing `0x1475b9494 -> 0x1475a3b17` materially changes the convergence profile and is therefore a valid late-stage branch.
+- `cmp ebx, 1` appears in this region
+- patching `cmp ebx, 1` alone does not unlock the sample
+- forcing `0x1475b9494 -> 0x1475a3b17` materially changes convergence
 
-## Strongest Late Gate Found So Far
-
-Current best candidate split:
+## Strongest Late Gate Found
 
 - `0x1468d67f8: neg esi`
 - `0x1468d67fa: jne 0x1461ec902`
 
-This branch is later and more useful than the earlier `cmp ebx, 1` patch point.
+This gate is real and useful, but it is not the root selector.
 
-## Root Selector Above The ESI Gate
+## Root Selector Above ESI
 
-Confirmed immediately above the late gate:
+Recovered chain:
 
 - `test r10w, 0x71ab`
 - `sete r8b`
 - `add r8d, r8d`
 - `call 0x1468d67b5`
 
+Implications:
+
+- `R10` is upstream of `R8`
+- `R8` is upstream of late `ESI`
+- forcing only `ESI` or only `R8` is usually too late
+
+Selector reduction:
+
+- a preceding `shr r10d, 0x5d` effectively reduces to `shr r10d, 29`
+- immediate selector space collapses to `R10D = 0..7`
+
+## R10 Sweep Findings
+
+Forcing `R10D = 0..7` after input:
+
+- can suppress known reject hotspots
+- can produce parked/wait states
+- does not yet yield stable visible success
+
+Forcing coherent `R10 = 0` before the selector:
+
+- removes known prompt/reject hotspots from traces
+- but does not produce success
+- instead tends to park the process
+
+Interpretation:
+
+- `R10` is genuinely upstream of the visible late selector
+- the valid acceptance state is not the trivial zero state
+
+## Anti-Debug Findings
+
+Basic anti-debug APIs were patched successfully in-process:
+
+- `CheckRemoteDebuggerPresent`
+- `IsDebuggerPresent`
+- `FindWindowW`
+
+This reduces contamination but does not change acceptance behavior by itself.
+
+## Initialization Error Classification
+
+`Initialization error 2` is currently classified as:
+
+- a bad early-initialization branch
+- caused by applying selector patches too early
+
+When equivalent selector patches are delayed until after input:
+
+- `Initialization error 2` disappears
+
+## Popup And Trap Findings
+
+The `bruh` popup is now classified as:
+
+- a modal `#32770` dialog
+- title `crackme.exe`
+- child `Static = "bruh"`
+- system-owned rather than a normal crackme-owned top-level window
+
+When `NtRaiseHardError` is neutralized:
+
+- the popup disappears
+- the underlying route terminates as `0xDEADC0DE`
+
 Meaning:
 
-- `R8` is a derived projection of `R10`
-- the late `ESI` split is downstream of that projection
-- forcing `R8` alone is not sufficient because the callee also consumes `R10`
+- `bruh` = hard-error presentation
+- `0xDEADC0DE` = underlying trap result
 
-Observed late-loop `R10` values are stable per input:
+## Termination Suppression Finding
 
-- `test -> 0x83090ff3d0`
-- `auth_login_success -> 0xb789b6fba0`
-- `aaaa -> 0xb485aff480`
-- `aaab -> 0x56bceffa10`
+When these are neutralized together:
 
-In all of these bad-input cases, `r10w & 0x71ab` is non-zero.
+- `NtRaiseHardError`
+- `NtTerminateProcess`
+- `RtlExitUserProcess`
 
-## Patch Results
+and an early trap-producing selector route is forced, the process:
 
-### Crude Prompt-Side Patches
+- remains alive
+- stops showing the trap popup
+- changes its console title to `crackme | reezli.vc`
 
-- NOPing the call at `0x57faee8` changes control flow but crashes with `0xC0000005`.
-- Replacing `FUN_145c13f7e` with `ret` also crashes.
-- Skipping `0x5d2473f` naively breaks execution.
+This is not yet a confirmed bypass, but it is the best classified non-reject, non-popup live state discovered so far.
 
-Conclusion: prompt-side blunt patches are not stable.
+## Downgraded Or Discarded Leads
 
-### Late Triple-Patch Variant A
-
-- `0x5b9494 -> e9 7e f6 fe ff`
-- `0x34f63 -> e9 04 53 1c 01 90`
-- `0x18d67fa -> 90 90 90 90 90`
-
-Observed effect:
-
-- for some inputs, the classic reject-chain disappeared from sampled hotspots,
-- but the behavior was not universal,
-- and this did not expose a clean global success path.
-
-### Late Triple-Patch Variant B
-
-- `0x5b9494 -> e9 7e f6 fe ff`
-- `0x34f63 -> e9 04 53 1c 01 90`
-- `0x18d67f8 -> 31 f6 90`
-
-Observed effect:
-
-- `test`: reject-chain disappeared; only prompt-side remained.
-- `aaaa`: reject-chain disappeared; process exited with `0xdeadc0de`.
-- `auth_login_success`: reject-chain still reappeared.
-
-Interpretation:
-
-- the `ESI`-based late split is real,
-- the fallthrough side is not a universal success path,
-- at least one trap or exceptional branch exists in this area.
-
-### Coherent R10 Forcing
-
-Patch tested:
-
-- `0x11fa329 -> 45 31 d2 90 90 90`
-
-Purpose:
-
-- force `R10=0` before the `test`
-- let the downstream `sete/add` build the alternate `R8` state naturally
-
-Observed effect:
-
-- all known prompt/reject hotspots disappear from tracing
-- no visible success path appears
-- the process appears to park in `ntdll` wait-style code
-
-Interpretation:
-
-- `R10` is definitely upstream of the visible late selector
-- but `R10=0` is not a valid acceptance state
-- this is a diagnostic patch, not a stable bypass
-
-## GUI Path Findings
-
-- A new GUI dialog with text `bruh` appeared during some late-stage patch experiments.
-- `USER32.dll` is loaded in those runs.
-- The unpacked module dump contains `MessageBoxA` and `USER32.dll` markers.
-- The string `bruh` itself was not found plainly in the dumped module image.
-
-Interpretation:
-
-- the popup is a real alternate branch,
-- but not yet useful as the main solve direction,
-- and not currently treated as the real success path.
-
-## Explicitly Discarded Or Downgraded Leads
-
-- `.pwdprot` as the direct password source for the active path
-- `FUN_1455da550` as the decisive active comparator
-- nearby visible strings as direct password candidates
+- `.pwdprot` as the active password source
+- `FUN_1455da550` as the decisive validator
 - standard compare APIs as the acceptance gate
-- common `bcrypt.dll` exports as the visible live validator
-- `0x1477dd120` as the final success/reject split
-- `0x14785312b` as the final success/reject split
-- `cmp ebx, 1` as a standalone terminal gate
-- the `bruh` popup as the main success lead
-- semantic candidate passwords such as `NecrumWin`, `Reezli`, `verify_hwid_pass`, `KeyAuth`, and `auth_login_success`
+- common visible `bcrypt.dll` calls as the active validator
+- embedded semantic strings as the correct password
+- `bruh` as a success clue
+- `Initialization error 2` as the main anti-debug result
 
 ## Current Solve Posture
 
-- Bypass is closer than exact-password recovery.
-- The problem is no longer broad exploration; it is a late-stage state and dispatch problem.
-- The highest-value remaining work is now the producer of `R10`, which feeds the `R10 -> R8 -> ESI` selector chain.
+- Bypass remains closer than exact-password recovery
+- The remaining problem is concentrated around coherent `R10`-side state production and trap avoidance

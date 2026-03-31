@@ -1,40 +1,79 @@
-﻿# Next Steps
+# Next Steps
 
-## Immediate Priorities
+## Immediate Priority
 
-1. Trace the producer of `R10` above `test r10w, 0x71ab -> sete r8b -> add r8d, r8d`.
-2. Determine whether `R10` is returned from a call, decoded from a table, or reduced from a larger VM state object.
-3. Identify what late-state properties separate a valid `R10` from:
-   - classic reject-loop reentry,
-   - prompt-side-only reentry,
-   - exceptional/trap paths such as `0xdeadc0de` or GUI popup,
-   - deadlock/wait behavior seen under `R10=0`.
+Turn the known trap route into a useful live path instead of merely silencing its UI.
 
-## Best Short-Term Bypass Path
+Why:
 
-The best short-term route is now a coherent late-state patch, not a local branch kill.
+- `bruh` is now classified as a hard-error wrapper
+- `0xDEADC0DE` is the underlying trap result
+- suppressing `NtRaiseHardError` alone only removes the popup
+- suppressing termination as well keeps the process alive and yields `crackme | reezli.vc`
 
-Current best direction:
+That makes the trap path the cleanest current place to push forward.
 
-- avoid forcing `ESI` or `R8` in isolation,
-- derive or inject a valid `R10` state instead,
-- only return to the older `0x5b9494 / 0x34f63 / 0x18d67f8` family if the upstream `R10` producer proves too opaque.
+## Recommended Work Order
 
-The next iteration should prefer coherent state synthesis over branch destruction.
+1. Follow the live `crackme | reezli.vc` state after hard-error and termination suppression.
+2. Identify where that state parks or loops once the trap cannot complete.
+3. Move one step upward from the trap exit and patch the trap-selection logic, not the OS-facing hard-error APIs.
+4. Keep selector patches delayed until after input when testing `R10`-side branches to avoid `Initialization error 2`.
 
-## Best Short-Term Password Path
+## Concrete Technical Targets
 
-If the bypass stabilizes first, reuse the bypassed state to:
+### 1. Trap-to-live transition
 
-- dump the final validation state more cleanly,
-- observe any success-only data path,
-- and then work backward toward the exact password condition.
+Use the popup-context probe and thread snapshots to identify the exact module RVA where the trap-producing route remains alive after:
 
-## Scripts To Extend If Needed
+- `NtRaiseHardError -> ret`
+- `NtTerminateProcess -> ret`
+- `RtlExitUserProcess -> ret`
 
-- `C:\Users\nesca\Desktop\crackme_batch_trace.py`
-- `C:\Users\nesca\Desktop\crackme_allthread_trace.py`
-- `C:\Users\nesca\Desktop\crackme_spin_probe.py`
-- `C:\Users\nesca\Desktop\crackme_popup_probe.py`
+Primary clue:
 
-The tracer family remains the highest-value automation asset in the project.
+- console title changes to `crackme | reezli.vc`
+
+### 2. Upstream trap selection
+
+Attack the route above the hard-error instead of the hard-error itself.
+
+Key areas:
+
+- `0x55d905a`
+- `0x55d9103`
+- the surrounding prompt/decoder block
+- the late `R10 -> R8 -> ESI` selector chain
+
+Goal:
+
+- avoid entering the trap route at all
+- preserve a coherent live state
+
+### 3. Coherent selector production
+
+Keep focusing on upstream state rather than only patching downstream branches.
+
+Best current state model:
+
+- `R10` feeds `R8`
+- `R8` feeds the late `ESI` gate
+- incoherent forcing causes reject, trap, or parked states
+
+### 4. Password route remains secondary
+
+Continue to treat direct password recovery as secondary until a stable non-trap route exists.
+
+Reason:
+
+- obvious semantic candidates already failed
+- visible compare and visible crypto APIs were downgraded
+- bypass is still closer than password recovery
+
+## Short-Term Success Criteria
+
+The next pass should aim to achieve at least one of these:
+
+- a run that avoids both reject and `0xDEADC0DE` without external API suppression
+- a stable parked state deeper than `crackme | reezli.vc`
+- or a patch point above the trap that changes outcome without causing `Initialization error 2`
