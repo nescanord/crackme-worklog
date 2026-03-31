@@ -1,106 +1,163 @@
 ﻿# Findings
 
-## Confirmed
+## Confirmed Runtime Facts
 
-- `FUN_1455da550` is not the decisive active-path password check.
-- The prompt-side active range is `0x1455da9fd..0x145fe7abc`.
-- The post-validation active range is `0x142310f49..0x142d1e00e`.
-- `FUN_1455d8b6f` is a real range-decoder style routine in the live prompt path.
-- The crackme can be driven without a debugger by writing input events into `CONIN$`.
-- The prompt hotspot around `0x57faee8` is real and materially affects downstream execution.
-- The stable post-input hotspot sequence is `0x2cf67df -> 0x236fe1a -> 0x23e05cd`.
-- `0x5c68c01` is a trampoline that jumps to `0x145c2de89`.
-- `FUN_145d24744` is a small helper with `ret 8`, but skipping it naively still breaks execution.
-- `RDI` and `R8` remain stable state tables in the post-validation block.
-- `RAX`, `RBX`, and `RSI` are the most clearly input-dependent registers in the confirmed validation path.
-- The handler around `0x23e05cd` has at least one duplicated template elsewhere in the unpacked module.
-- The convergence pair `0x27dd114` and `0x2802257` is real and sits later in the same validation network.
-- The VM exit still collapses into two stable result families before transferring to `ntdll.dll`:
-  - `RAX=0x28`, `RBX=0`
-  - `RAX=0x2a`, `RBX=1`
-- `0x14755c736` is a direct caller into `0x147802244`.
-- `0x1477aa994 -> 0x14755c714 -> 0x147802244 -> ... -> 0x147901c6c -> 0x1475e525a` is part of the live late-stage chain.
-- `RBX` behaves like a heavily mixed late-stage state and changes strongly even for near-identical inputs.
-- The late-stage critical zone is now narrowed to:
-  - `0x1475ba2e2`
-  - `0x1475b9460`
-  - `0x1475b9494`
-  - `0x1475a3b17`
-  - `0x145034f48`
+- The active visible validation route is not driven by `strcmp`, `memcmp`, `strncmp`, `wcscmp`, or the obvious `bcrypt.dll` exports.
+- Debugger attachment contaminates execution and can trigger alternate behavior or detection.
+- The crackme can be driven reproducibly without a debugger by launching it in a real console and writing keyboard events into `CONIN$`.
+- The prompt-side active range is approximately `0x1455da9fd..0x145fe7abc`.
+- The post-validation active range is approximately `0x142310f49..0x142d1e00e`.
+- `FUN_1455d8b6f` is a real decoder/decompression component in the prompt-side path.
 
-## Runtime Observations
+## Confirmed Hotspot Chains
 
-- Wrong-password flow is reproducible without attaching a debugger.
-- Main-thread RIP sampling before and after input produces stable hotspot sets.
-- Prompt-side sequence observed during clean runs:
-  - `0x55d9c83`
-  - `0x55d9c1c`
-  - `0x5c68c01`
-  - `0x5d24729`
-- Post-validation sequence observed during clean runs:
-  - `0x2cf67df`
-  - `0x236fe1a`
-  - `0x23e05cd`
-- At `0x2cf67df`, captured runs so far still reach the `jne` with the failure-side condition in place; no tested candidate has diverged into a success-like path.
-- After the post-validation sequence, execution falls into system-side waiting behavior rather than terminating immediately.
-- Later in the same run, repeated convergence occurs around:
-  - `0x27dd114`
-  - `0x2802257`
-- Patching or forcing branches in that late cluster changes local hit counts but has not yet broken the wrong-password route cleanly.
-- Forcing `0x1475b9494 -> 0x1475a3b17` changes the convergence counts more than baseline, which confirms that the branch is real and late in the visible validation route.
+### Prompt Side
 
-## Disassembly Notes
+Observed repeatedly in clean runs:
 
-- `0x14736fe1a`: `xor esi, ebx ; jmp 0x1473e05c8`
-- `0x14736fe06`: `shr esi, 8`
-- `0x14736fe0f`: `jbe 0x1475ac56a`
-- `0x1473e05c3`: `call 0x14755ce70`
-- `0x1473e05e7`: `xor esi, 0xe7a90182`
-- `0x1473e05f0`: `call 0x1474c3aa1`
-- `0x147cf67df`: `jne 0x147311abb`
-- `0x1477dd114`: `xor r8d, 0x6f9eaca4 ; call 0x1478d82bc ; jle 0x1477e8459`
-- `0x147853126`: `lea rsp, [rsp + 0x30] ; jne 0x1477aa994`
-- `0x1477aa994`: `movzx edx, byte ptr [rdi] ; call 0x14755c714 ; call 0x147901c6c ; ... ; call 0x1475e525a`
-- `0x1475e525f`: `jne 0x1475ba298`
-- `0x1475ba2e2`: `jne 0x1475b9460`
-- `0x1475b948e`: `cmp ebx, 1`
-- `0x1475b9494`: `jmp 0x147616360`
-- `0x14761637a`: `jae 0x1475a3b17`
-- `0x1476163c0`: `jmp rdi`
-- `0x1475a3b37`: `jmp 0x145034f48`
-- There is another handler-like block around `0x14a7d171e` that reproduces the same `sar ...`, `inc r11`, `push 0x54bdce0b`, `xor esi, 0xe7a90182` pattern.
+- `0x55d9c83`
+- `0x55d9c1c`
+- `0x5c68c01`
+- `0x5d24729`
+- `0x5d2473f`
 
-## Patch Behavior
+### Post-Validation Side
 
-- NOPing the call at `0x57faee8` changes flow but crashes with `0xC0000005`.
-- Replacing `FUN_145c13f7e` with `ret` also crashes with `0xC0000005`.
-- Replacing the call at `0x5d2473f` with `add rsp, 8; nop` still crashes.
-- NOPing the conditional branch at `0x2cf67df` does not crash immediately and diverts execution away from the normal `0x236fe1a` path.
-- Under the `0x2cf67df` branch patch, execution returns transiently to prompt-side offsets near `0x55d8ff7`, then still reaches rejection-side neighborhood later.
-- Naively skipping direct calls around `0x23e05cd` does not produce a clean bypass.
-- Forcing or skipping the `jle` at `0x1477dd120` does not prevent convergence through `0x27dd114 / 0x2802257`.
-- Forcing or skipping the `jne` at `0x14785312b` also fails to produce a clean bypass.
-- Forcing `0x1475b9494 -> 0x1475a3b17` changes the route significantly, but does not yet expose a visible success path.
+Observed repeatedly in clean runs:
 
-## Strings And Output
+- `0x2cf67df`
+- `0x236fe1a`
+- `0x23e05cd`
 
-Visible output includes:
+### Later Convergence
 
-- `a: auth_login_success`
-- `b: https://keyauthh.io/register`
-- `Enter password:`
-- `Wrong.`
-- `Press Enter to exit...`
+Observed repeatedly in the same validation network:
 
-The strings `Wrong.`, `Detected.`, and `Enter password:` were not found plainly in the checked module dump or the searched private-memory dumps.
+- `0x27dd114`
+- `0x2802257`
 
-## Discarded
+## Register-State Findings
 
-- `.pwdprot` as a direct answer source for the active path
-- `FUN_1455da550` as the active comparator
-- token strings near `auth_login_success` as direct passwords
-- standard `bcrypt` and CRT compare APIs as the primary active route
-- crude prompt-side call removal as a reliable bypass strategy
-- `0x1477dd120` as the terminal success-versus-rejection branch
-- `0x14785312b` as the terminal success-versus-rejection branch
-- `cmp ebx, 1` as a standalone final gate
+Stable or semi-stable in the post-validation path:
+
+- `RCX = 0x3791ca2a`
+- `RDX = 0x20000`
+- `RDI` behaves like a persistent state/table pointer
+- `R8` behaves like a persistent support pointer/table
+
+Most input-dependent:
+
+- `RAX`
+- `RBX`
+- `RSI`
+
+Interpretation:
+
+- the crackme is carrying a derived late-stage state,
+- not simply comparing the input to a plaintext constant.
+
+## RBX Behavior
+
+`RBX` changes strongly even for very similar inputs.
+
+This was confirmed with clustered traces such as:
+
+- `aaaa / aaab / aaac / aaad`
+- `aaaa / aaaab / aaaac / aaaad`
+
+The differences do not look like a tiny incremental counter or shallow state machine. `RBX` looks like a heavily mixed late-stage state, close to a digest or strongly transformed result.
+
+## Late-Stage Control Network
+
+The strongest confirmed late chain is:
+
+- `0x1475ba2e2`
+- `0x1475b9460`
+- `0x1475b9494`
+- `0x1475a3b17`
+- `0x145034f48`
+
+Important notes:
+
+- `cmp ebx, 1` appears in this region and is meaningful, but patching it alone does not unlock the sample.
+- Forcing `0x1475b9494 -> 0x1475a3b17` materially changes the convergence profile and is therefore a valid late-stage branch.
+
+## Strongest Late Gate Found So Far
+
+Current best candidate split:
+
+- `0x1468d67f8: neg esi`
+- `0x1468d67fa: jne 0x1461ec902`
+
+This branch is later and more useful than the earlier `cmp ebx, 1` patch point.
+
+## Patch Results
+
+### Crude Prompt-Side Patches
+
+- NOPing the call at `0x57faee8` changes control flow but crashes with `0xC0000005`.
+- Replacing `FUN_145c13f7e` with `ret` also crashes.
+- Skipping `0x5d2473f` naively breaks execution.
+
+Conclusion: prompt-side blunt patches are not stable.
+
+### Late Triple-Patch Variant A
+
+- `0x5b9494 -> e9 7e f6 fe ff`
+- `0x34f63 -> e9 04 53 1c 01 90`
+- `0x18d67fa -> 90 90 90 90 90`
+
+Observed effect:
+
+- for some inputs, the classic reject-chain disappeared from sampled hotspots,
+- but the behavior was not universal,
+- and this did not expose a clean global success path.
+
+### Late Triple-Patch Variant B
+
+- `0x5b9494 -> e9 7e f6 fe ff`
+- `0x34f63 -> e9 04 53 1c 01 90`
+- `0x18d67f8 -> 31 f6 90`
+
+Observed effect:
+
+- `test`: reject-chain disappeared; only prompt-side remained.
+- `aaaa`: reject-chain disappeared; process exited with `0xdeadc0de`.
+- `auth_login_success`: reject-chain still reappeared.
+
+Interpretation:
+
+- the `ESI`-based late split is real,
+- the fallthrough side is not a universal success path,
+- at least one trap or exceptional branch exists in this area.
+
+## GUI Path Findings
+
+- A new GUI dialog with text `bruh` appeared during some late-stage patch experiments.
+- `USER32.dll` is loaded in those runs.
+- The unpacked module dump contains `MessageBoxA` and `USER32.dll` markers.
+- The string `bruh` itself was not found plainly in the dumped module image.
+
+Interpretation:
+
+- the popup is a real alternate branch,
+- but not yet useful as the main solve direction,
+- and not currently treated as the real success path.
+
+## Explicitly Discarded Or Downgraded Leads
+
+- `.pwdprot` as the direct password source for the active path
+- `FUN_1455da550` as the decisive active comparator
+- nearby visible strings as direct password candidates
+- standard compare APIs as the acceptance gate
+- common `bcrypt.dll` exports as the visible live validator
+- `0x1477dd120` as the final success/reject split
+- `0x14785312b` as the final success/reject split
+- `cmp ebx, 1` as a standalone terminal gate
+- the `bruh` popup as the main success lead
+
+## Current Solve Posture
+
+- Bypass is closer than exact-password recovery.
+- The problem is no longer broad exploration; it is a late-stage state and dispatch problem.
+- The highest-value remaining work is around the late ESI-based split and the exact branch/handler that separates stable acceptance from rejection or trap paths.
