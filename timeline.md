@@ -1,588 +1,147 @@
 # Timeline
 
-## 1. Initial Verification
+## 1. Environment And Sample Verification
 
-The project started from an already-opened Ghidra session and inherited notes. The first task was to confirm the real sample and separate confirmed facts from prior assumptions.
+The project started from a Windows setup built around Ghidra, GhidraMCP, and a live imported `crackme.exe`. The sample was later hash-verified against the public challenge values, confirming that the active file is the intended `NecrumWin (Reezli challenge)` binary.
 
-The sample was later hash-verified against the public challenge values, confirming that the active file was the intended target.
+## 2. Early Static Surface
 
-## 2. Early Static Leads Eliminated
+The first pass followed the normal crackme playbook:
+- inspect strings
+- inspect imports
+- inspect sections
+- inspect obvious compare and crypto surfaces
 
-The first hypotheses focused on the most obvious surfaces:
+This identified many fake sections, fake signatures, and suspicious strings, but did not yield a working validation function.
 
+## 3. Obvious Validation Surfaces Downgraded
+
+The project then tested and downgraded the most plausible straightforward leads:
 - `.pwdprot`
 - `FUN_1455da550`
-- visible auth-related strings
-- standard compare APIs
-- the exposed `bcrypt.dll` import surface
+- `strcmp`, `memcmp`, `strncmp`, `wcscmp`
+- visible `bcrypt.dll` imports
+- the obvious fake auth strings
 
-These were all plausible enough to test, but none of them explained the actual visible validation path.
+These were plausible, but none matched the real visible post-input route.
 
-## 3. Debugger Contamination Confirmed
+## 4. Debugger Contamination Confirmed
 
-Debugger-oriented tests visibly altered the program's behavior. The user also observed detection-like windows during those runs, which matched the anti-debug hypothesis.
+Classic debugger-driven work visibly altered behavior. The user also saw detection-style windows during those runs. That forced a major strategic pivot:
+- stop relying on a classic debugger for the main path
+- launch the process normally
+- inject input through `CONIN$`
+- observe it externally through thread state, memory reads, and selective runtime patching
 
-That forced a strategic pivot:
+## 5. Clean Runtime Tooling Built
 
-- stop using a classic debugger for the main path
-- drive the sample through a normal console
-- observe it indirectly through thread context, memory reads, and focused runtime patching
-
-## 4. Clean Console Instrumentation Built
-
-A no-debugger runtime workflow was built around:
-
+A custom no-debugger workflow was built around Win32 primitives:
 - `CreateProcessW(..., CREATE_NEW_CONSOLE)`
 - `AttachConsole`
 - `CONIN$`
 - `WriteConsoleInputW`
-- `SuspendThread`
-- `GetThreadContext`
+- targeted `ReadProcessMemory` and `WriteProcessMemory`
 
-This made it possible to launch the crackme cleanly, inject selected inputs, and recover reproducible runtime chains.
+That workflow became the foundation for most later probes.
 
-## 5. Prompt-Side Path Recovered
+## 6. Prompt-Side And Post-Validation Chains Recovered
 
-The first clean prompt-side sequence emerged:
+With the clean console workflow, several stable hotspot families were recovered.
 
+Prompt-side chain:
 - `0x55d9c83`
 - `0x55d9c1c`
 - `0x5c68c01`
 - `0x5d24729`
 - `0x5d2473f`
 
-Work in this region also confirmed that `FUN_1455d8b6f` is a genuine decoder / decompressor in the live path.
-
-## 6. Post-Validation Path Recovered
-
-After input submission through a real console, a stable post-validation chain was recovered:
-
+Post-validation chain:
 - `0x2cf67df`
 - `0x236fe1a`
 - `0x23e05cd`
 
-This narrowed the problem from broad exploration to a reproducible live validation route.
-
-## 7. Register-State Analysis
-
-Captures at the post-validation hotspots showed:
-
-- stable `RCX` and `RDX`
-- stable-looking `RDI` and `R8`
-- strongly input-dependent `RAX`, `RBX`, and `RSI`
-
-That supported the idea that the crackme validates through derived internal state rather than a plaintext compare buffer.
-
-## 8. Later Convergence Located
-
-Following the post-validation path deeper uncovered a later convergence pair:
-
+Later convergence:
 - `0x27dd114`
 - `0x2802257`
 
-At this stage the process also exhibited two collapsed result families before entering system code:
+## 7. Late-State And Trap Work
 
-- `RAX = 0x28`, `RBX = 0`
-- `RAX = 0x2a`, `RBX = 1`
+A long middle phase focused on the late selector and trap network:
+- `R10 -> R8 -> ESI`
+- `0x1468d67f8 / 0x1468d67fa`
+- `bruh`
+- `0xDEADC0DE`
+- `xabort 0xDC`
+- late trampolines and stack-fix bypass attempts
 
-This made `RBX` a useful late-state signal.
+This work was real and productive because it classified several trap families and proved that the sample is heavily protected. But it did not reach a stable acceptance path.
 
-## 9. Batch Tracing Introduced
+## 8. Project Organization And Canonical Worklog
 
-Manual tracing became too slow, so `crackme_batch_trace.py` was created to automate:
+As the session grew, the Desktop project was reorganized under:
+- `NecrumWin-Reezli`
+- `analysis/scripts`
+- `analysis/traces`
+- `analysis/notes`
+- `analysis/worklog/crackme-worklog`
 
-- process launch
-- input injection
-- patch application
-- hotspot sampling
-- JSON output for differential comparison
+A canonical repo-backed memory flow was added so the project would stop relying on stale chat memory.
 
-Clustered inputs such as `aaaa / aaab / aaac / aaad` showed that `RBX` changed strongly and diffusely, which looked more like a late mixed state or digest than a tiny state machine.
+## 9. Reezli Clue Appears
 
-## 10. Several Late Branches Discarded
+A new Desktop file, `ayuda de reezli!.txt`, provided a direct clue from the crackme author. It described:
+- a rough shape of `main`
+- fake strings and anti-debug threads
+- a detection branch printing `Detected.`
+- a password check called `auth_verify_password`
+- a PBKDF2-HMAC-SHA256 check with `100000` iterations, `salt[16]`, and `expected[32]`
 
-Multiple branches that looked terminal were tested and ruled out as standalone answers, including:
+This clue materially changed the priority of the project.
 
-- `0x1477dd120`
-- `0x14785312b`
-- isolated `cmp ebx, 1`
+## 10. Reezli Clue Partially Validated
 
-They influenced execution, but none opened the visible success path.
+The project then switched from treating the clue as anecdotal to testing it directly.
 
-## 11. Stronger Late Chain Recovered
+What was validated:
+- `SetConsoleTitleA("crackme | reezli.vc")` was captured live
+- the real syscall output buffer contained `Detected.
+`
+- the fake auth strings were already known decoys
 
-The strongest surviving late network became:
+This moved the front line away from the late trap chain and back toward the intended password path.
 
-- `0x1475ba2e2`
-- `0x1475b9460`
-- `0x1475b9494`
-- `0x1475a3b17`
-- `0x145034f48`
+## 11. Static Base Correction
 
-Forcing `0x1475b9494 -> 0x1475a3b17` changed convergence significantly, proving that this region is genuinely late and meaningful.
+An important address-base mistake was corrected during this phase. The static base was reset to `0x140000000`, which aligned the dynamic RVAs correctly.
 
-## 12. Discovery Of The ESI Gate
+This anchored the early path more cleanly:
+- return address around `0x2d20094`
+- enclosing function `0x2d1ffe6..0x2d2095d`
+- internal chained callees `0x210efe7` and `0x26f3352`
+- later entry into the protected region `0x2310f49..0x2d1e00e`
 
-The next major improvement was a stronger late split:
+## 12. Ghidra Reopened And Revalidated
 
-- `0x1468d67f8: neg esi`
-- `0x1468d67fa: jne 0x1461ec902`
+Ghidra was reopened and the older analyzed project was retained. MCP checks confirmed:
+- the project is on the right sample
+- `entry` is present and navigable
+- the database already contains the required analysis state
 
-This branch was later, more stateful, and more responsive than earlier leads.
+This avoided a costly and noisy re-import.
 
-## 13. Triple-Patch Experiments
+## 13. Canonical Runtime Probes Added
 
-The strongest early patch family around this gate became:
+To professionalize the workflow, the repo gained a cleaner runtime helper layer and focused probes:
+- `scripts/core/runtime_probe.py`
+- `scripts/probes/crackme_reezli_main_path_probe.py`
+- `scripts/probes/crackme_ntio_path_probe.py`
 
-- `0x5b9494 -> e9 7e f6 fe ff`
-- `0x34f63 -> e9 04 53 1c 01 90`
-- `0x18d67fa -> 90 90 90 90 90`
+These do not magically solve the crackme, but they formalize the current approach and replace ad-hoc one-off scripts as the default entry point.
 
-This did not solve the crackme, but it proved that the analysis had reached a meaningful late split because the known reject loop disappeared for some inputs.
+## 14. Current Position
 
-## 14. GUI Divergence: `bruh`
-
-Some late-stage patch combinations started producing a GUI dialog showing `bruh`. That route was clearly not the ordinary reject path, but it also did not look like a clean success path.
-
-Later probing showed that:
-
-- the dialog is a modal `#32770`
-- title is `crackme.exe`
-- the actual text lives in a child `Static` control with value `bruh`
-
-This downgraded `bruh` from a possible success clue to a likely exceptional or trap path.
-
-## 15. Cleaner ESI Forcing
-
-Instead of simply NOPing the late branch, a cleaner patch forced `ESI = 0` immediately before `neg esi`:
-
-- `0x18d67f8 -> 31 f6 90`
-
-combined with:
-
-- `0x5b9494 -> e9 7e f6 fe ff`
-- `0x34f63 -> e9 04 53 1c 01 90`
-
-This improved behavior materially:
-
-- some inputs left the reject loop entirely
-- one representative case landed in `0xDEADC0DE`
-
-That showed the late split was real, while proving that its fallthrough side was not a universal success path.
-
-## 16. Selector Root Moved Upward
-
-Static work on runtime-materialized code showed that the `ESI` gate was not the root decision point. A smaller selector just above it builds `R8` from `R10`:
-
-- `test r10w, 0x71ab`
-- `sete r8b`
-- `add r8d, r8d`
-- `call 0x1468d67b5`
-
-This shifted the model:
-
-- `R10` is upstream state
-- `R8` is derived selector output
-- `ESI` is a later normalization layer
-
-## 17. Multi-Thread Tracing
-
-`crackme_allthread_trace.py` was added after it became clear that post-input work was not confined to the original main thread.
-
-That confirmed:
-
-- the crackme spawns multiple workers
-- some interesting paths only show up under all-thread sampling
-- several earlier visibility problems were tracer limitations rather than path disappearance
-
-## 18. Selector Space Reduced
-
-A useful static observation followed:
-
-- `shr r10d, 0x5d` effectively means `shr r10d, 29`
-
-This reduces the selector immediately before `test r10w, 0x71ab` to only:
-
-- `R10D = 0..7`
-
-## 19. R10 Sweeps
-
-`crackme_r10_sweep.py` and `crackme_r10_window_sweep.py` were created to sweep those selector states, especially when patches were applied after input to avoid corrupting initialization.
-
-Results:
-
-- many forced `R10D` values suppressed known reject hotspots
-- none produced clean visible success
-- several landed in wait/park states in `ntdll`
-
-This established that forcing the selector alone is not enough; the sample cares about coherent late state.
-
-## 20. Anti-Debug Baseline Neutralized
-
-`crackme_api_guard_probe.py` was expanded and fixed to patch:
-
-- `CheckRemoteDebuggerPresent`
-- `IsDebuggerPresent`
-- `FindWindowW`
-
-Once the 64-bit `ctypes` handling was corrected, these patches applied successfully. The result was clear:
-
-- basic anti-debug was real
-- but neutralizing it alone did not alter acceptance behavior
-
-## 21. Initialization Error Classified
-
-The `Initialization error 2` screenshot and follow-up tests showed that this path appears when selector patches are applied too early.
-
-When equivalent selector patches are delayed until after input:
-
-- `Initialization error 2` disappears
-
-This is currently treated as a bad initialization / integrity side-effect, not as the main anti-debug route.
-
-## 22. Hard-Error Trap Classified
-
-The `bruh` route was then pushed further by neutralizing `NtRaiseHardError`.
-
-That caused the popup to disappear and exposed the true underlying result:
-
-- `exit code = 0xDEADC0DE`
-
-This was an important classification step:
-
-- `bruh` is only the visible hard-error wrapper
-- `0xDEADC0DE` is the trap result underneath
-
-## 23. Termination Neutralization
-
-To see what happens beyond the trap, the project neutralized:
-
-- `NtRaiseHardError`
-- `NtTerminateProcess`
-- `RtlExitUserProcess`
-
-When combined with an early trap-producing selector patch, the process:
-
-- no longer died immediately
-- stayed alive
-- changed its console title to `crackme | reezli.vc`
-
-This is not yet a clean bypass, but it is the clearest classified non-reject, non-popup live state found so far.
-
-## 24. Current Position
-
-The project is now concentrated around:
-
-- coherent production of late state, especially upstream of `R10`
-- conversion of the known `0xDEADC0DE` trap route into a stable non-trap route
-- analysis of the live `crackme | reezli.vc` state
-
-The crackme remains unresolved, but the search space has collapsed from the whole module to a small late-state selector and its trap-handling logic.
-
-## 25. Local Exit Family Compressed Further
-
-Additional profiling and branch forcing reduced the active trap family to a repeated local decoder/exit pattern around:
-
-- `0x55d9f55`
-- `0x55d9f67`
-- `0x55d8fee`
-- `0x55d8ff4`
-- `0x55d9122`
-- `0x55d90d7`
-
-The important insight here was that the trap was not controlled by one isolated branch. Multiple homologous loops feed the same terminal trap behavior.
-
-## 26. Spin-Capture Tool Added
-
-`crackme_spin_gate_capture.py` was added to freeze execution at narrow RVAs and dump live registers without using a classic debugger.
-
-This produced direct captures at:
-
-- `0x55d9f55`
-- `0x55d9122`
-- `0x55d90d7`
-
-and showed that the local exit family carries real state through:
-
-- `R8D`
-- `R9`
-- `R13`
-- `R10D`
-- `R14`
-
-## 27. Stronger Local Exit Rewrites
-
-A stronger local patch family was tested:
-
-- `0x55d9f55 -> 45 31 c0 90 90 90 90`
-- `0x55d9f67 -> 4d 39 ed`
-- `0x55d8fee -> 90 90 90 90 90 90`
-- `0x55d8ff4 -> 4d 39 ed`
-
-This did not solve the crackme, but it materially improved classification:
-
-- the ordinary `DEADC0DE` route could be displaced
-- the next visible outcome became `0x80000003`
-
-That proved the project had moved one layer deeper into the trap chain.
-
-## 28. WinDbg And Local Dumps Added
-
-To stop guessing about the new `0x80000003` path, Windows Error Reporting LocalDumps were configured and WinDbg was installed.
-
-This created a non-attach workflow for inspecting the actual terminal exception path.
-
-## 29. Exact `DEADC0DE` Exit Caller Recovered
-
-The first useful dump showed that the `0x80000003` route still reaches:
-
-- `kernel32!ExitProcessImplementation+0x10`
-
-with:
-
-- `RCX = 0xDEADC0DE`
-
-and that the immediate crackme-side caller is:
-
-- `crackme+0x5a3628a`
-
-This was the first exact crackme-side call site tying the trap to a concrete exit path.
-
-## 30. Skipping The Exact Exit Call Was Tested
-
-NOPing the exact `call rax` at `crackme+0x5a3628a` removed the immediate `DEADC0DE` termination, but the process then crashed with:
-
-- `0xC0000005`
-- execute at null
-
-This clarified the trap structure:
-
-- the explicit exit call is real and terminal
-- but it is not the right bypass point
-- the stable bypass must divert before the trap is fully assembled
-
-## 31. `xabort` Was Converted Into A Real Return
-
-The first major breakthrough after the old trap line came from treating `crackme+0x1e0ae4c` as a sink, not a decision point.
-
-Late patch:
-
-- `0x1e0ae4c -> ret`
-
-This alone did not solve the sample, but it changed the nature of the failure and proved the analysis had moved past the original `xabort 0xDC` instruction.
-
-## 32. Stack Repair Above The Sink
-
-Dump inspection showed that the exception stack was not shaped for a direct return. The next slot above the sink was:
-
-- `crackme+0x1203bb4`
-
-followed by:
-
-- a scratch qword
-- then a plausible continuation in the module
-
-That led to the first stack-aware repair:
-
-- `0x1203bb4 -> add rsp, 8 ; ret`
-
-With:
-
-- `0x1e0ae4c -> ret`
-- `0x1203bb4 -> add rsp, 8 ; ret`
-
-the process no longer died in `C000001D`. The new crash moved forward to:
-
-- `crackme+0x5a6c54a`
-
-This was the clearest sign yet that the bypass path was being unwound, not just suppressed.
-
-## 33. Late Read Neutralization
-
-The new crash at `crackme+0x5a6c54a` came from:
-
-- `mov cx, word ptr [rbx]`
-
-inside a late materialized block.
-
-That read was patched to:
-
-- `xor cx, cx ; nop`
-
-The new result was not success, but another forward move in the chain:
-
-- AV at wild RIP `0x800000023`
-
-This showed that the bad read had been real and that execution had reached a later indirect target.
-
-## 34. First Trampoline Return
-
-The `0x800000023` case produced another useful dump. The stack and surrounding state pointed into:
-
-- `crackme+0x55efa2`
-
-This location sat inside another late stub. Replacing it with:
-
-- `ret`
-
-did not solve the sample but advanced the chain again.
-
-## 35. Second Trampoline Return
-
-The next useful continuation came from:
-
-- `crackme+0x5898a23`
-
-Replacing that stub with:
-
-- `ret`
-
-again shifted the failure forward instead of collapsing back into the old trap route.
-
-## 36. Stack Repair Repeats In The Chain
-
-The next dump showed another stack pattern matching the previous repair shape:
-
-- a continuation-like module address
-- a scratch qword
-- then another plausible module continuation
-
-That led to another stack-aware patch:
-
-- `0x55da697 -> add rsp, 8 ; ret`
-
-This is the point where the strategy became clear: the late anti-tamper system behaves as a chain of trampolines and stack fixups, not as a single branch gate.
-
-## 37. Latest Front Line
-
-After the trampoline sequence:
-
-- `0x1e0ae4c -> ret`
-- `0x1203bb4 -> add rsp, 8 ; ret`
-- `0x5a6c54a -> xor cx, cx ; nop`
-- `0x55efa2 -> ret`
-- `0x5898a23 -> ret`
-- `0x55da697 -> add rsp, 8 ; ret`
-
-the crash now lands back inside the crackme module at:
-
-- `crackme+0x446f267`
-
-This is the strongest current result:
-
-- the old `DEADC0DE` route is no longer the front line
-- `xabort` is no longer the front line
-- the problem is now a deeper late trampoline chain that can be unwound step by step
-
-## 38. Password Pivot: Decoder Arguments Recovered
-
-The analysis pivoted back to the intended goal: recovering the password rather than forcing acceptance.
-
-Two live dumps with different unique passwords were used to recover the saved arguments of the live decoder thread. This established:
-
-- `FUN_1455d8b6f` is a real range decoder / LZMA-like function
-- `param_2` is stable and points to `crackme.exe + 0x2d958c5`
-- `param_5` is stable and points to `crackme.exe + 0x11ec000`
-- `param_4` / `param_7` do not point to a password buffer or digest
-
-The strongest new finding was that:
-
-- `param_3` changes across inputs
-
-while:
-
-- the compressed stream
-- the decoded output base
-- the decoded output bytes
-
-all remain constant.
-
-This changes the interpretation of the decoder completely:
-
-- it is not the password validator
-- it is a generic runtime subsystem
-- the password influences caller state, not decoder payload
-
-## 39. Decoder Output Proved Constant Across Passwords
-
-The full segment rooted at:
-
-- `crackme.exe + 0x11ec000`
-
-was compared across two different live dumps captured after different unique passwords.
-
-Result:
-
-- `byte_diffs = 0`
-
-This is one of the most important eliminations in the project so far. It proves that the password is not encoded into the reconstructed blob written by the live decoder.
-
-## 40. Decoder Out-Params Downgraded
-
-The saved out-params recovered from the thread stack were inspected directly.
-
-Result:
-
-- the structures behind `param_4` and `param_7` include `KnownDlls\\ntdll.dll`
-
-Interpretation:
-
-- these are runtime subsystem metadata structures
-- they are not a hidden password buffer
-- they are not the final KDF output
-
-## 41. SHA256 Table Further Downgraded
-
-The old runtime-only table:
-
-- `salt(16)`
-- `digest(32)`
-- UTF-16 `SHA256`
-- `keyauth_*`
-- `auth_login_success`
-
-was tested more aggressively with:
-
-- `PBKDF2-HMAC-SHA256`
-- `ascii` and `utf16le`
-- iterations `1..2000`
-- strong runtime candidates and semantically likely tokens
-
-Result:
-
-- no hits
-
-This does not mathematically prove the table is irrelevant, but it is now strongly downgraded as the main password hypothesis.
-
-## 42. Post-Input Timeline Confirms Single Active Thread
-
-The process was sampled repeatedly for up to `2s` after submitting input.
-
-Result:
-
-- the active crackme-side path remained in a single thread
-- that thread stayed inside the `0x55d8xxx-0x55d9xxx` region
-- different inputs did, however, diverge into different late subzones such as:
-  - `0x55d903d`
-  - `0x55d9b2d`
-  - `0x55d9d54`
-
-Interpretation:
-
-- there is no hidden worker thread doing the real validation off to the side
-- the validation still lives in the prompt/decoder family
-- but the real password signal is now most likely the state handed to that family by its caller
-
-## 43. New Front Line
-
-At this point the highest-value target is no longer:
-
-- the late hard-error chain
-- the `SHA256` runtime table
-- or the decoder output blob
-
-The new front line is:
-
-- the caller that constructs `param_3` for `FUN_1455d8b6f`
-
-That caller is now the strongest candidate for the real password-dependent logic.
+The current project position is:
+- password recovery is again the primary route
+- bypass work remains documented but secondary
+- the main technical obstacle is observing the early title-to-prompt path without tripping the detection surface
+- the next meaningful win is to recover the real `auth_verify_password` equivalent or its PBKDF2 buffers from the protected block

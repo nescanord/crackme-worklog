@@ -1,0 +1,12 @@
+{
+  "base": "0x7ff6c8f80000",
+  "api": "NtWriteFile",
+  "target_va": "0x7ff8998a1b80",
+  "hits": [
+    {
+      "index": 0,
+      "no_hit": true,
+      "exit_code": "0x103"
+    }
+  ]
+}

@@ -1,35 +1,39 @@
 NecrumWin (Reezli challenge) - README operativo
 ===============================================
 
-Objetivo:
+Objetivo principal:
 - recuperar una password valida
-- o producir un bypass estable
 
-Estado actual:
-- la linea activa ya no es solo `DEADC0DE` ni `xabort`
-- el frente real es una cadena de trampolines tardios
+Objetivo secundario:
+- construir un bypass estable
 
-Parches tardios productivos:
-- `0x1e0ae4c -> ret`
-- `0x1203bb4 -> add rsp, 8 ; ret`
-- `0x5a6c54a -> xor cx, cx ; nop`
-- `0x55efa2 -> ret`
-- `0x5898a23 -> ret`
-- `0x55da697 -> add rsp, 8 ; ret`
+Situacion actual
+----------------
 
-Progresion observada:
-- `crackme+0x1e0ae4c`
-- `crackme+0x5a6c54a`
-- `0x800000023`
-- `crackme+0x446f267`
+El proyecto ya no esta centrado en el viejo eje `DEADC0DE -> xabort -> trampolines`.
+Ese trabajo sigue documentado, pero la pista de Reezli y la validacion dinamica de la
+ruta del titulo han movido el frente principal de nuevo a la password.
 
-Interpretacion:
-- el bypass parece una cadena de stubs/trampolines
-- ya no parece un unico branch final
+Lo confirmado ahora:
+- `crackme | reezli.vc` es una ruta real
+- `Detected.` sale por el buffer real de `NtWriteFile`
+- las strings tipo `auth_login_success` son senuelos
+- la ruta temprana tras el titulo pasa por RVAs reales dentro del bloque protegido
+- el problema principal actual es instrumentar esa ruta sin disparar deteccion
 
-Fuente de verdad:
+Scripts canonicos
+-----------------
+
+- `scripts/core/runtime_probe.py`
+- `scripts/probes/crackme_reezli_main_path_probe.py`
+- `scripts/probes/crackme_ntio_path_probe.py`
+
+Fuentes de verdad
+-----------------
+
 - `README.md`
 - `findings.md`
 - `timeline.md`
 - `next-steps.md`
 - `notes/memoria_canonica.txt`
+- `notes/source-clues/2026-04-01-reezli-hint.md`
